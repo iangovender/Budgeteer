@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Add Expense</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/bootstrap.min.css') }}">
+</head>
+<body>
+    <nav class="navbar navbar-expand-lg navbar-light bg-light">
+        <div class="container-fluid">
+            <a class="navbar-brand" href="{{ url_for('dashboard') }}">Expense Tracker</a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav me-auto">
+                    <li class="nav-item"><a class="nav-link" href="{{ url_for('dashboard') }}">Dashboard</a></li>
+                    <li class="nav-item"><a class="nav-link active" href="{{ url_for('expense_entry') }}">Add Expense</a></li>
+                    <li class="nav-item"><a class="nav-link" href="{{ url_for('budget_settings') }}">Budget Settings</a></li>
+                </ul>
+                <form method="POST" action="{{ url_for('logout') }}">
+                    <button type="submit" class="btn btn-outline-danger">Logout</button>
+                </form>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container mt-4">
+        <h2>Add New Expense</h2>
+        
+        <!-- Flash Messages -->
+        {% with messages = get_flashed_messages() %}
+            {% if messages %}
+                <div class="alert alert-warning">
+                    {{ messages[0] }}
+                </div>
+            {% endif %}
+        {% endwith %}
+
+        <!-- Expense Form -->
+        <div class="row">
+            <div class="col-md-6">
+                <div class="card">
+                    <div class="card-body">
+                        <form method="POST" action="{{ url_for('add_expense') }}">
+                            <div class="mb-3">
+                                <label for="date" class="form-label">Date</label>
+                                <input type="date" class="form-control" id="date" name="date" required>
+                            </div>
+                            <div class="mb-3">
+                                <label for="amount" class="form-label">Amount (R)</label>
+                                <input type="number" step="0.01" min="0.01" class="form-control" id="amount" name="amount" required>
+                            </div>
+                            <div class="mb-3">
+                                <label for="description" class="form-label">Description</label>
+                                <input type="text" class="form-control" id="description" name="description" required placeholder="What did you spend on?">
+                            </div>
+                            <button type="submit" class="btn btn-primary">Add Expense</button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Category Prediction Result -->
+        {% if category %}
+        <div class="row mt-4">
+            <div class="col-md-6">
+                <div class="alert alert-info">
+                    <h5>Expense Added Successfully!</h5>
+                    <p><strong>Category:</strong> {{ category }}</p>
+                    <p><strong>Amount:</strong> R {{ amount }}</p>
+                    <p><strong>Description:</strong> {{ description }}</p>
+                    <p><strong>Confidence:</strong> {{ (confidence_score * 100)|round(1) }}%</p>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- Recent Expenses -->
+        <div class="row mt-4">
+            <div class="col">
+                <div class="card">
+                    <div class="card-body">
+                        <h4 class="card-title">Recent Expenses</h4>
+                        {% if recent_expenses %}
+                        <div class="table-responsive">
+                            <table class="table table-striped">
+                                <thead>
+                                    <tr>
+                                        <th>Date</th>
+                                        <th>Amount</th>
+                                        <th>Description</th>
+                                        <th>Category</th>
+                                        <th>Confidence</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for expense in recent_expenses %}
+                                    <tr>
+                                        <td>{{ expense.date }}</td>
+                                        <td>R {{ expense.amount }}</td>
+                                        <td>{{ expense.description }}</td>
+                                        <td>{{ expense.category }}</td>
+                                        <td>{{ (expense.confidence_score * 100)|round(1) }}%</td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                        {% else %}
+                        <p class="text-muted">No expenses recorded yet.</p>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="{{ url_for('static', filename='js/bootstrap.bundle.min.js') }}"></script>
+    <script>
+        // Set today's date as default
+        document.getElementById('date').value = new Date().toISOString().split('T')[0];
+        
+        // Focus on description field for better UX
+        document.getElementById('description').focus();
+    </script>
+</body>
+</html>

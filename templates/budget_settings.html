@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Budget Settings</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/bootstrap.min.css') }}">
+    <style>
+        .progress-bar-custom {
+            transition: width 0.6s ease;
+        }
+    </style>
+</head>
+<body>
+    <nav class="navbar navbar-expand-lg navbar-light bg-light">
+        <div class="container-fluid">
+            <a class="navbar-brand" href="{{ url_for('dashboard') }}">Expense Tracker</a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav me-auto">
+                    <li class="nav-item"><a class="nav-link" href="{{ url_for('dashboard') }}">Dashboard</a></li>
+                    <li class="nav-item"><a class="nav-link" href="{{ url_for('expense_entry') }}">Add Expense</a></li>
+                    <li class="nav-item"><a class="nav-link active" href="{{ url_for('budget_settings') }}">Budget Settings</a></li>
+                </ul>
+                <form method="POST" action="{{ url_for('logout') }}">
+                    <button type="submit" class="btn btn-outline-danger">Logout</button>
+                </form>
+            </div>
+        </div>
+    </nav>
+    <div class="container mt-4">
+        <h2>Budget Settings</h2>
+        {% with messages = get_flashed_messages() %}
+            {% if messages %}
+                <div class="alert alert-success mt-3">
+                    {{ messages[0] }}
+                </div>
+            {% endif %}
+        {% endwith %}
+        <form method="POST" action="{{ url_for('update_budgets') }}">
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>Category</th>
+                        <th>Monthly Limit (R)</th>
+                        <th>Current Spending (R)</th>
+                        <th>Progress</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for category in categories %}
+                    {% set budget_limit = budgets.get(category, 0) %}
+                    {% set spending = current_spending.get(category, 0) %}
+                    {% set progress_percentage = (spending / budget_limit * 100) if budget_limit and budget_limit > 0 else 0 %}
+                    {% set progress_percentage = progress_percentage|round(2) %}
+                    <tr>
+                        <td>{{ category }}</td>
+                        <td>
+                            <input type="number" step="0.01" min="0" name="limit_{{ category }}" value="{{ budget_limit }}" class="form-control">
+                        </td>
+                        <td>{{ spending }}</td>
+                        <td>
+                            <div class="progress">
+                                <div class="progress-bar-custom progress-bar
+                                    {% if budget_limit and spending > budget_limit %}bg-danger
+                                    {% elif progress_percentage > 80 %}bg-warning
+                                    {% else %}bg-success{% endif %}" 
+                                     data-width="{{ progress_percentage }}">
+                                    {{ "%.1f"|format(progress_percentage) }}%
+                                </div>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            <button type="submit" class="btn btn-primary">Save Budgets</button>
+        </form>
+        {% if over_budget %}
+            <div class="alert alert-warning mt-3">Some categories are over budget!</div>
+        {% endif %}
+    </div>
+    <script src="{{ url_for('static', filename='js/bootstrap.bundle.min.js') }}"></script>
+    <script>
+        // Set progress bar widths after page load
+        document.addEventListener('DOMContentLoaded', function() {
+            const progressBars = document.querySelectorAll('.progress-bar-custom');
+            progressBars.forEach(bar => {
+                const width = parseFloat(bar.getAttribute('data-width'));
+                const finalWidth = Math.min(width, 100); // Cap at 100%
+                bar.style.width = finalWidth + '%';
+            });
+        });
+    </script>
+</body>
+</html>
