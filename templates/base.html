@@ -1,0 +1,530 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Budgeteer{% endblock %}</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/bootstrap.min.css') }}">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        :root {
+            --primary-color: #4361ee;
+            --secondary-color: #3a0ca3;
+            --accent-color: #4cc9f0;
+            --success-color: #4ade80;
+            --warning-color: #f59e0b;
+            --danger-color: #ef4444;
+            --light-bg: #f8f9fa;
+            --dark-text: #1e293b;
+            --sidebar-width: 250px;
+        }
+        
+        body {
+            background-color: var(--light-bg);
+            color: var(--dark-text);
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            display: flex;
+            flex-direction: column;
+            min-height: 100vh;
+            margin: 0;
+            transition: all 0.3s ease;
+            overflow-x: hidden;
+        }
+        
+        /* Navigation Bar */
+        .navbar {
+            background: linear-gradient(to right, #42a5f5, #1e88e5); 
+            padding: 15px 20px;
+            color: #fff;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            z-index: 1030;
+            transition: all 0.3s ease;
+        }
+
+        .navbar-container {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+        .navbar-brand {
+            font-size: 1.8rem;
+            font-weight: bold;
+            color: #fff !important;
+            text-decoration: none;
+        }
+
+        .navbar-brand i {
+            margin-right: 10px;
+            font-size: 1.5rem;
+            vertical-align: middle;
+        }
+
+        .navbar-menu {
+            list-style: none;
+            display: flex;
+            gap: 15px;
+            margin: 0;
+            padding: 0;
+        }
+
+        .navbar-menu li a {
+            color: #fff;
+            text-decoration: none;
+            font-weight: 500;
+            padding: 5px 10px;
+            transition: background 0.3s, color 0.3s;
+            border-radius: 6px;
+        }
+
+        .navbar-menu li a:hover,
+        .navbar-menu li a.active {
+            background: #90caf9; 
+            color: #333;
+        }
+
+        .right-menu {
+            margin-left: auto;
+        }
+        
+        /* Sidebar */
+        .sidebar {
+            width: var(--sidebar-width);
+            background: white;
+            box-shadow: 2px 0 10px rgba(0,0,0,0.15);
+            position: fixed;
+            left: calc(-1 * var(--sidebar-width));
+            top: 0;
+            height: 100vh;
+            padding-top: 80px;
+            transition: left 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            z-index: 1020;
+            overflow-y: auto;
+        }
+        
+        .sidebar-open .sidebar {
+            left: 0;
+        }
+        
+        .sidebar-menu {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+        
+        .sidebar-menu li {
+            margin-bottom: 5px;
+        }
+        
+        .sidebar-menu li a {
+            display: flex;
+            align-items: center;
+            padding: 12px 20px;
+            color: var(--dark-text);
+            text-decoration: none;
+            transition: background 0.3s;
+            border-left: 4px solid transparent;
+        }
+        
+        .sidebar-menu li a:hover,
+        .sidebar-menu li a.active {
+            background: #e3f2fd;
+            border-left-color: var(--primary-color);
+        }
+        
+        .sidebar-menu li a i {
+            margin-right: 10px;
+            width: 20px;
+            text-align: center;
+        }
+        
+        /* Main content */
+        .main-content {
+            margin-top: 70px;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            margin-left: 0;
+            width: 100%;
+        }
+        
+        .sidebar-open .main-content {
+            margin-left: 0;
+            width: 100%;
+        }
+        
+        .main-container {
+            flex: 1;
+            max-width: 1200px;
+            width: 100%;
+            margin: 40px auto;
+            padding: 20px;
+        }
+        
+        /* Toggle button */
+        .sidebar-toggle {
+            background: rgba(255, 255, 255, 0.1);
+            border: none;
+            color: white;
+            font-size: 1.5rem;
+            cursor: pointer;
+            margin-right: 15px;
+            padding: 8px 12px;
+            border-radius: 8px;
+            transition: all 0.3s ease;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .sidebar-toggle:hover {
+            background-color: rgba(255, 255, 255, 0.2);
+            transform: scale(1.05);
+        }
+        
+        .sidebar-toggle:active {
+            transform: scale(0.95);
+        }
+        
+        .card {
+            border: none;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+        }
+        
+        .card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+        }
+        
+        .btn-primary {
+            background-color: var(--primary-color);
+            border-color: var(--primary-color);
+            border-radius: 8px;
+            padding: 8px 20px;
+            font-weight: 600;
+        }
+        
+        .btn-primary:hover {
+            background-color: var(--secondary-color);
+            border-color: var(--secondary-color);
+        }
+        
+        /* Lighter blue for active tabs */
+        .nav-pills .nav-link.active {
+            background-color: #90caf9 !important;
+            color: #333 !important;
+            border: none;
+        }
+        
+        .nav-pills .nav-link {
+            color: #333;
+        }
+        
+        .progress-bar-custom {
+            transition: width 0.6s ease;
+            border-radius: 4px;
+        }
+        
+        .dashboard-card {
+            border-left: 4px solid var(--primary-color);
+        }
+        
+        .alert-success {
+            border-left: 4px solid var(--success-color);
+        }
+        
+        .alert-warning {
+            border-left: 4px solid var(--warning-color);
+        }
+        
+        .alert-danger {
+            border-left: 4px solid var(--danger-color);
+        }
+        
+        .form-control {
+            border-radius: 8px;
+            border: 1px solid #e2e8f0;
+            padding: 10px 15px;
+        }
+        
+        .form-control:focus {
+            border-color: var(--primary-color);
+            box-shadow: 0 0 0 0.2rem rgba(67, 97, 238, 0.25);
+        }
+        
+        .table th {
+            border-top: none;
+            font-weight: 600;
+            color: var(--dark-text);
+        }
+        
+        .alert {
+            padding: 15px 20px;
+            margin-bottom: 20px;
+            border-radius: 8px;
+            position: relative;
+            font-weight: 500;
+            color: #fff;
+            animation: slideIn 0.5s ease-out;
+            transition: opacity 0.3s ease;
+        }
+
+        .alert-success { 
+            background-color: #4caf50;
+            border-left: 4px solid #2e7d32;
+        }
+
+        .alert-danger { 
+            background-color: #f44336;
+            border-left: 4px solid #c62828;
+        }
+
+        .alert-error { 
+            background-color: #f44336;
+            border-left: 4px solid #c62828;
+        }
+
+        .alert-info { 
+            background-color: #2196f3;
+            border-left: 4px solid #1565c0;
+        }
+
+        .alert-warning {
+            background-color: #ff9800;
+            border-left: 4px solid #e65100;
+        }
+
+        .alert-close {
+            position: absolute;
+            top: 8px;
+            right: 12px;
+            font-size: 20px;
+            cursor: pointer;
+            color: #fff;
+            opacity: 0.8;
+            transition: opacity 0.3s ease;
+        }
+
+        .alert-close:hover {
+            opacity: 1;
+        }
+
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateY(-20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .footer {
+            text-align: center;
+            padding: 20px 10px;
+            background: #1e88e5; 
+            color: #fff;
+            margin-top: auto;
+            transition: all 0.3s ease;
+            margin-left: 0;
+            width: 100%;
+        }
+
+        .sidebar-open .footer {
+            margin-left: 0;
+            width: 100%;
+        }
+
+        /* Remove spinner from number inputs */
+        input[type=number]::-webkit-outer-spin-button,
+        input[type=number]::-webkit-inner-spin-button {
+            -webkit-appearance: none;
+            margin: 0;
+        }
+
+        input[type=number] {
+            appearance: textfield;
+            -moz-appearance: textfield;
+        }
+        
+        /* Overlay for mobile */
+        .sidebar-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 1010;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+        
+        .sidebar-open .sidebar-overlay {
+            display: block;
+            opacity: 1;
+        }
+        
+        /* Mobile responsiveness */
+        @media (max-width: 768px) {
+            .navbar-brand {
+                font-size: 1.4rem;
+            }
+            
+            .main-container {
+                padding: 15px;
+            }
+        }
+        
+        @media (min-width: 769px) {
+            .sidebar-overlay {
+                pointer-events: none;
+            }
+        }
+    </style>
+    {% block extra_css %}{% endblock %}
+</head>
+<body>
+    <!-- Sidebar Overlay -->
+    <div class="sidebar-overlay" id="sidebarOverlay"></div>
+
+    <!-- Navigation Bar -->
+    <nav class="navbar">
+        <div class="navbar-container">
+            {% if session.get('user_id') %}
+            <button class="sidebar-toggle" id="sidebarToggle" aria-label="Toggle Sidebar">
+                <i class="fas fa-bars"></i>
+            </button>
+            {% endif %}
+            
+            <a class="navbar-brand" href="{{ url_for('home') }}">
+                <i class="fas fa-money-bill-wave" aria-hidden="true"></i>
+                Budgeteer
+            </a>
+
+            <ul class="navbar-menu right-menu">
+                {% if session.get('user_id') %}
+                    <li><a href="{{ url_for('profile') }}" class="{% if request.endpoint == 'profile' %}active{% endif %}">
+                        <i class="fas fa-user me-1"></i>Profile
+                    </a></li>
+                    <li>
+                        <form method="POST" action="{{ url_for('logout') }}" class="d-inline">
+                            <button type="submit" class="btn btn-link" style="color: #fff; text-decoration: none; padding: 5px 10px; border: none; background: none; font-weight: 500;">
+                                <i class="fas fa-sign-out-alt me-1"></i>Logout
+                            </button>
+                        </form>
+                    </li>
+                {% else %}
+                    <li><a href="{{ url_for('login') }}">Login</a></li>
+                    <li><a href="{{ url_for('login') }}">Sign Up</a></li>
+                {% endif %}
+            </ul>
+        </div>
+    </nav>
+
+    <!-- Sidebar -->
+    {% if session.get('user_id') %}
+    <div class="sidebar" id="sidebar">
+        <ul class="sidebar-menu">
+            <li><a href="{{ url_for('dashboard') }}" class="{% if request.endpoint == 'dashboard' %}active{% endif %}">
+                <i class="fas fa-tachometer-alt"></i>Dashboard
+            </a></li>
+            <li><a href="{{ url_for('expense_entry') }}" class="{% if request.endpoint == 'expense_entry' %}active{% endif %}">
+                <i class="fas fa-plus-circle"></i>Add Expense
+            </a></li>
+            <li><a href="{{ url_for('budget_settings') }}" class="{% if request.endpoint == 'budget_settings' %}active{% endif %}">
+                <i class="fas fa-cog"></i>Budget Settings
+            </a></li>
+            <li><a href="{{ url_for('profile') }}" class="{% if request.endpoint == 'profile' %}active{% endif %}">
+                <i class="fas fa-user"></i>Profile
+            </a></li>
+        </ul>
+    </div>
+    {% endif %}
+
+    <!-- Main Content -->
+    <div class="main-content" id="mainContent">
+        <main class="main-container">
+            <!-- Flash Messages -->
+            {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+                    {% for category, message in messages %}
+                        <div class="alert alert-{{ category if category != 'message' else 'info' }}">
+                            {{ message }}
+                            <span class="alert-close" onclick="this.parentElement.style.display='none';">&times;</span>
+                        </div>
+                    {% endfor %}
+                {% endif %}
+            {% endwith %}
+
+            <!-- Page Content -->
+            {% block content %}{% endblock %}
+        </main>
+
+        <!-- Footer -->
+        <footer class="footer">
+            <p>&copy; 2024 Budgeteer Expense Tracker. All rights reserved.</p>
+            <p>Built with Flask</p>
+        </footer>
+    </div>
+
+    <script src="{{ url_for('static', filename='js/bootstrap.bundle.min.js') }}"></script>
+    <script>
+        // Sidebar toggle functionality
+        const sidebarToggle = document.getElementById('sidebarToggle');
+        const sidebarOverlay = document.getElementById('sidebarOverlay');
+        const body = document.body;
+        
+        if (sidebarToggle) {
+            sidebarToggle.addEventListener('click', function(e) {
+                e.stopPropagation();
+                body.classList.toggle('sidebar-open');
+            });
+        }
+
+        // Close sidebar when clicking on overlay
+        if (sidebarOverlay) {
+            sidebarOverlay.addEventListener('click', function() {
+                body.classList.remove('sidebar-open');
+            });
+        }
+
+        // Close sidebar when clicking on a sidebar link
+        document.querySelectorAll('.sidebar-menu a').forEach(link => {
+            link.addEventListener('click', function() {
+                body.classList.remove('sidebar-open');
+            });
+        });
+        
+        // Close sidebar when pressing Escape key
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape' && body.classList.contains('sidebar-open')) {
+                body.classList.remove('sidebar-open');
+            }
+        });
+        
+        // Auto-close alerts after 5 seconds
+        document.addEventListener('DOMContentLoaded', function() {
+            const alerts = document.querySelectorAll('.alert');
+            alerts.forEach(alert => {
+                setTimeout(() => {
+                    alert.style.opacity = '0';
+                    setTimeout(() => {
+                        alert.style.display = 'none';
+                    }, 300);
+                }, 5000);
+            });
+        });
+    </script>
+    {% block extra_js %}{% endblock %}
+</body>
+</html>

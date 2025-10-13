@@ -5,95 +5,89 @@ from datetime import datetime
 import numpy as np
 import pandas as pd
 import matplotlib
-matplotlib.use('Agg')  # Use non-interactive backend
+matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 from io import BytesIO
 import base64
-from models import db, User, Expense, Budget  # Import models and db from models.py
+from models import db, User, Expense, Budget
+from flask_migrate import Migrate
 
 app = Flask(__name__)
-app.secret_key = 'your_secret_key_here'  # Change this to a random string for security
+app.secret_key = 'your_secret_key_here'
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///expense_tracker.db'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
-db.init_app(app)  # Initialize db with app
 
-# Rule-based function to categorize expenses (replacing FinBERT)
+db.init_app(app)
+migrate = Migrate(app, db)
+
+# Categories for the application
+CATEGORIES = ['Food', 'Transport', 'Entertainment', 'Groceries', 'Bills', 'Shopping', 'Other']
+
+# Rule-based categorization
 def categorize_expense(description):
     description = description.lower()
-    categories = ['Food', 'Transport', 'Entertainment', 'Groceries', 'Bills', 'Shopping', 'Other']
     
-    # Simple keyword-based rules for categorization
-    if any(keyword in description for keyword in ['coffee', 'food', 'restaurant', 'dinner', 'lunch']):
+    if any(keyword in description for keyword in ['coffee', 'food', 'restaurant', 'dinner', 'lunch', 'cafe']):
         return 'Food', 0.9
-    elif any(keyword in description for keyword in ['taxi', 'bus', 'fuel', 'train', 'flight']):
+    elif any(keyword in description for keyword in ['taxi', 'bus', 'fuel', 'train', 'flight', 'uber']):
         return 'Transport', 0.9
-    elif any(keyword in description for keyword in ['movie', 'concert', 'game', 'ticket']):
+    elif any(keyword in description for keyword in ['movie', 'concert', 'game', 'ticket', 'netflix']):
         return 'Entertainment', 0.9
-    elif any(keyword in description for keyword in ['grocery', 'supermarket', 'milk', 'bread']):
+    elif any(keyword in description for keyword in ['grocery', 'supermarket', 'milk', 'bread', 'food']):
         return 'Groceries', 0.9
-    elif any(keyword in description for keyword in ['electricity', 'water', 'internet', 'phone']):
+    elif any(keyword in description for keyword in ['electricity', 'water', 'internet', 'phone', 'bill']):
         return 'Bills', 0.9
-    elif any(keyword in description for keyword in ['clothing', 'electronics', 'store', 'mall']):
+    elif any(keyword in description for keyword in ['clothing', 'electronics', 'store', 'mall', 'shop']):
         return 'Shopping', 0.9
     else:
-        return 'Other', 0.8  # Default category with slightly lower confidence
+        return 'Other', 0.8
 
-# Helper to generate pie chart image
 def generate_pie_chart(category_totals):
     if not category_totals:
-        # Return None if no data
         return None
     
-    # Prepare data for pie chart
     labels = list(category_totals.keys())
     sizes = list(category_totals.values())
     
-    # Create pie chart
     plt.figure(figsize=(8, 6))
-    
-    # Use numpy for calculations
     total = np.sum(sizes)
     
-    # Create pie chart with customization
     colors = plt.cm.Set3(np.linspace(0, 1, len(labels)))
     wedges, texts, autotexts = plt.pie(sizes, labels=labels, colors=colors, autopct='%1.1f%%',
                                       startangle=90, shadow=True)
     
-    # Style the chart
     plt.title('Spending by Category', fontsize=16, fontweight='bold')
     
-    # Make the percentages inside the pie chart more readable
     for autotext in autotexts:
         autotext.set_color('white')
         autotext.set_fontweight('bold')
     
-    # Equal aspect ratio ensures that pie is drawn as a circle
     plt.axis('equal')
     
-    # Save chart to a bytes buffer
     buffer = BytesIO()
     plt.savefig(buffer, format='png', bbox_inches='tight', dpi=100)
     buffer.seek(0)
     
-    # Encode the image to base64
     image_png = buffer.getvalue()
     chart_image = base64.b64encode(image_png).decode('utf-8')
     buffer.close()
-    plt.close()  # Close the figure to free memory
+    plt.close()
     
     return chart_image
 
-# Helper to check if user is logged in
 def login_required(f):
     def wrap(*args, **kwargs):
         if 'user_id' not in session:
-            flash('Please log in first.')
+            flash('Please log in first.', 'warning')
             return redirect(url_for('login'))
         return f(*args, **kwargs)
     wrap.__name__ = f.__name__
     return wrap
 
-@app.route('/', methods=['GET', 'POST'])
+@app.route('/')
+def home():
+    return render_template('home.html')
+
 @app.route('/login', methods=['GET', 'POST'])
 def login():
     if request.method == 'POST':
@@ -103,8 +97,9 @@ def login():
         if user and check_password_hash(user.password_hash, password):
             session['user_id'] = user.id
             session['username'] = user.username
+            flash('Login successful!', 'success')
             return redirect(url_for('dashboard'))
-        flash('Invalid credentials.')
+        flash('Invalid credentials.', 'danger')
     return render_template('login.html')
 
 @app.route('/signup', methods=['POST'])
@@ -112,35 +107,42 @@ def signup():
     username = request.form['username']
     email = request.form['email']
     password = request.form['password']
-    if User.query.filter_by(username=username).first() or User.query.filter_by(email=email).first():
-        flash('Account already exists.')
+    
+    if User.query.filter_by(username=username).first():
+        flash('Username already exists.', 'danger')
         return redirect(url_for('login'))
+    if User.query.filter_by(email=email).first():
+        flash('Email already registered.', 'danger')
+        return redirect(url_for('login'))
+    
     hashed_pw = generate_password_hash(password)
-    new_user = User(username=username, email=email, password_hash=hashed_pw)
+    new_user = User(username=username, email=email, password_hash=hashed_pw, monthly_income=0.0)
     db.session.add(new_user)
     db.session.commit()
-    flash('Account created! Please log in.')
+    flash('Account created successfully! Please set up your monthly income in your profile.', 'success')
     return redirect(url_for('login'))
 
 @app.route('/logout', methods=['POST'])
 def logout():
     session.clear()
-    return redirect(url_for('login'))
+    flash('You have been logged out.', 'info')
+    return redirect(url_for('home'))
 
 @app.route('/dashboard')
 @login_required
 def dashboard():
     user_id = session['user_id']
-    # Use Pandas/NumPy for analytics
+    user = User.query.get(user_id)
+    
     expenses = Expense.query.filter_by(user_id=user_id).all()
     if not expenses:
         total_spending = 0
         recent_expenses = []
         chart_image = None
         categories_count = 0
-        remaining_budget = 0
+        remaining_budget = user.monthly_income if user.monthly_income else 0
+        category_budgets = {}
     else:
-        # Create expense data safely
         expense_data = []
         for e in expenses:
             expense_data.append({
@@ -151,89 +153,155 @@ def dashboard():
         
         df = pd.DataFrame(expense_data)
         total_spending = np.sum(df['amount'].values)
-        recent_expenses = expenses[-5:]  # Last 5
+        recent_expenses = expenses[-5:]
         
-        # Calculate category totals for pie chart - with error handling
         if not df.empty and 'category' in df.columns:
             category_sum = df.groupby('category')['amount'].sum().to_dict()
         else:
             category_sum = {}
         
         chart_image = generate_pie_chart(category_sum)
-        
         categories_count = len(category_sum)
         
-        # Calculate remaining budget (simple implementation)
+        # Calculate remaining budget based on income minus total spending
+        remaining_budget = user.monthly_income - total_spending if user.monthly_income else -total_spending
+        
+        # Calculate category budgets
         budgets = Budget.query.filter_by(user_id=user_id).all()
-        total_budget = sum(budget.monthly_limit for budget in budgets)
-        remaining_budget = max(0, total_budget - total_spending)
+        category_budgets = {}
+        for budget in budgets:
+            spending = category_sum.get(budget.category, 0)
+            category_budgets[budget.category] = {
+                'limit': budget.monthly_limit,
+                'spending': spending
+            }
     
     return render_template('dashboard.html', 
-                         total_spending=total_spending, 
-                         recent_expenses=recent_expenses, 
+                         total_spending=total_spending,
+                         recent_expenses=recent_expenses,
                          chart_image=chart_image,
                          categories_count=categories_count,
-                         remaining_budget=remaining_budget)
+                         monthly_income=user.monthly_income,
+                         remaining_budget=remaining_budget,
+                         category_budgets=category_budgets)
 
-@app.route('/expense_entry', methods=['GET'])
+@app.route('/expense_entry', methods=['GET', 'POST'])
 @login_required
 def expense_entry():
-    recent_expenses = Expense.query.filter_by(user_id=session['user_id']).order_by(Expense.created_at.desc()).limit(5).all()
+    if request.method == 'POST':
+        amount = float(request.form['amount'])
+        description = request.form['description']
+        date = datetime.strptime(request.form['date'], '%Y-%m-%d')
+        
+        category, confidence = categorize_expense(description)
+        
+        new_expense = Expense(
+            user_id=session['user_id'],
+            amount=amount,
+            description=description,
+            category=category,
+            confidence_score=confidence,
+            date=date
+        )
+        
+        db.session.add(new_expense)
+        db.session.commit()
+        
+        flash(f'Expense of R {amount} added to {category} category!', 'success')
+        return redirect(url_for('expense_entry'))
+    
+    # Get recent expenses for display
+    recent_expenses = Expense.query.filter_by(user_id=session['user_id']).order_by(Expense.date.desc()).limit(5).all()
+    
     return render_template('expense_entry.html', recent_expenses=recent_expenses)
 
-@app.route('/add_expense', methods=['POST'])
-@login_required
-def add_expense():
-    date = datetime.strptime(request.form['date'], '%Y-%m-%d').date()
-    amount = float(request.form['amount'])
-    description = request.form['description']
-    category, confidence = categorize_expense(description)
-    new_expense = Expense(user_id=session['user_id'], date=date, amount=amount, description=description, category=category, confidence_score=confidence)
-    db.session.add(new_expense)
-    db.session.commit()
-    # Check budget alert (simple example)
-    budget = Budget.query.filter_by(user_id=session['user_id'], category=category).first()
-    if budget and amount > budget.monthly_limit:
-        flash('Warning: This expense exceeds your budget for ' + category)
-    return render_template('expense_entry.html', category=category, amount=amount, description=description, confidence_score=confidence, recent_expenses=Expense.query.filter_by(user_id=session['user_id']).order_by(Expense.created_at.desc()).limit(5).all())
-
-@app.route('/budget_settings', methods=['GET'])
+@app.route('/budget_settings', methods=['GET', 'POST'])
 @login_required
 def budget_settings():
-    categories = ['Food', 'Transport', 'Entertainment', 'Groceries', 'Bills', 'Shopping', 'Other']
-    budgets = {b.category: b.monthly_limit for b in Budget.query.filter_by(user_id=session['user_id']).all()}
+    user_id = session['user_id']
     
-    # Calculate current spending without pandas to avoid KeyError
-    expenses = Expense.query.filter_by(user_id=session['user_id']).all()
-    current_spending = {category: 0 for category in categories}  # Initialize all categories to 0
-    
+    # Get current spending by category
+    expenses = Expense.query.filter_by(user_id=user_id).all()
+    current_spending = {}
     for expense in expenses:
         if expense.category in current_spending:
             current_spending[expense.category] += expense.amount
         else:
-            # Handle unexpected categories by adding them
             current_spending[expense.category] = expense.amount
     
-    over_budget = any(current_spending.get(c, 0) > budgets.get(c, 0) for c in categories)
-    return render_template('budget_settings.html', categories=categories, budgets=budgets, current_spending=current_spending, over_budget=over_budget)
+    # Get current budgets
+    budgets = {}
+    budget_objects = Budget.query.filter_by(user_id=user_id).all()
+    for budget in budget_objects:
+        budgets[budget.category] = budget.monthly_limit
+    
+    if request.method == 'POST':
+        # Update budgets
+        for category in CATEGORIES:
+            limit_key = f'limit_{category}'
+            if limit_key in request.form:
+                monthly_limit = float(request.form[limit_key]) if request.form[limit_key] else 0
+                
+                budget = Budget.query.filter_by(user_id=user_id, category=category).first()
+                if budget:
+                    budget.monthly_limit = monthly_limit
+                else:
+                    budget = Budget(user_id=user_id, category=category, monthly_limit=monthly_limit)
+                    db.session.add(budget)
+        
+        db.session.commit()
+        flash('Budgets updated successfully!', 'success')
+        return redirect(url_for('budget_settings'))
+    
+    # Check if any category is over budget
+    over_budget = False
+    for category, spending in current_spending.items():
+        if category in budgets and budgets[category] > 0 and spending > budgets[category]:
+            over_budget = True
+            break
+    
+    return render_template('budget_settings.html', 
+                         categories=CATEGORIES,
+                         budgets=budgets,
+                         current_spending=current_spending,
+                         over_budget=over_budget)
 
 @app.route('/update_budgets', methods=['POST'])
 @login_required
 def update_budgets():
-    categories = ['Food', 'Transport', 'Entertainment', 'Groceries', 'Bills', 'Shopping', 'Other']
-    for cat in categories:
-        limit = float(request.form.get(f'limit_{cat}', 0))
-        existing = Budget.query.filter_by(user_id=session['user_id'], category=cat).first()
-        if existing:
-            existing.monthly_limit = limit
-        else:
-            new_budget = Budget(user_id=session['user_id'], category=cat, monthly_limit=limit)
-            db.session.add(new_budget)
+    user_id = session['user_id']
+    
+    for category in CATEGORIES:
+        limit_key = f'limit_{category}'
+        if limit_key in request.form:
+            monthly_limit = float(request.form[limit_key]) if request.form[limit_key] else 0
+            
+            budget = Budget.query.filter_by(user_id=user_id, category=category).first()
+            if budget:
+                budget.monthly_limit = monthly_limit
+            else:
+                budget = Budget(user_id=user_id, category=category, monthly_limit=monthly_limit)
+                db.session.add(budget)
+    
     db.session.commit()
-    flash('Budgets updated!')
+    flash('Budgets updated successfully!', 'success')
     return redirect(url_for('budget_settings'))
+
+@app.route('/profile', methods=['GET', 'POST'])
+@login_required
+def profile():
+    user_id = session['user_id']
+    user = User.query.get(user_id)
+    
+    if request.method == 'POST':
+        user.monthly_income = float(request.form['monthly_income'])
+        db.session.commit()
+        flash('Profile updated successfully!', 'success')
+        return redirect(url_for('profile'))
+    
+    return render_template('profile.html', user=user)
 
 if __name__ == '__main__':
     with app.app_context():
-        db.create_all()  # Creates the database tables if they don't exist
+        db.create_all()
     app.run(debug=True)

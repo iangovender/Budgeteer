@@ -1,0 +1,64 @@
+{% extends "base.html" %}
+
+{% block title %}Profile - Budgeteer{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-header">
+                <h4 class="card-title mb-0">User Profile</h4>
+            </div>
+            <div class="card-body">
+                <div class="row mb-4">
+                    <div class="col-md-6">
+                        <h6>Account Information</h6>
+                        <p><strong>Username:</strong> {{ user.username }}</p>
+                        <p><strong>Email:</strong> {{ user.email }}</p>
+                        <p><strong>Member since:</strong> {{ user.created_at.strftime('%B %d, %Y') }}</p>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="text-center">
+                            <div class="profile-icon mb-3">
+                                <i class="fa fa-user-circle fa-5x text-primary"></i>
+                            </div>
+                            <h5>{{ user.username }}</h5>
+                        </div>
+                    </div>
+                </div>
+
+                <hr>
+
+                <h5 class="mb-3">Monthly Income Setup</h5>
+                {% if not user.monthly_income or user.monthly_income == 0 %}
+                    <div class="alert alert-warning">
+                        <i class="fa fa-exclamation-triangle me-2"></i>
+                        Please set up your monthly income to enable budget tracking features.
+                    </div>
+                {% endif %}
+                
+                <form method="POST">
+                    <div class="mb-3">
+                        <label for="monthly_income" class="form-label">Monthly Income (R)</label>
+                        <input type="number" step="0.01" class="form-control" id="monthly_income" 
+                               name="monthly_income" value="{{ user.monthly_income if user.monthly_income else '' }}" 
+                               required>
+                        <div class="form-text">
+                            This helps calculate your remaining budget and track spending against your income.
+                        </div>
+                    </div>
+                    <button type="submit" class="btn btn-primary">Update Income</button>
+                </form>
+
+                {% if user.monthly_income and user.monthly_income > 0 %}
+                <div class="mt-4 p-3 bg-light rounded">
+                    <h6>Budget Summary</h6>
+                    <p class="mb-1"><strong>Monthly Income:</strong> R {{ user.monthly_income | round(2) }}</p>
+                    <p class="mb-0"><small class="text-muted">Visit the dashboard to see detailed budget analysis.</small></p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

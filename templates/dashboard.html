@@ -1,124 +1,219 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dashboard</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/bootstrap.min.css') }}">
-    <!-- No need for Chart.js anymore -->
-</head>
-<body>
-    <nav class="navbar navbar-expand-lg navbar-light bg-light">
-        <div class="container-fluid">
-            <a class="navbar-brand" href="{{ url_for('dashboard') }}">Expense Tracker</a>
-            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
-                <span class="navbar-toggler-icon"></span>
-            </button>
-            <div class="collapse navbar-collapse" id="navbarNav">
-                <ul class="navbar-nav me-auto">
-                    <li class="nav-item"><a class="nav-link" href="{{ url_for('expense_entry') }}">Add Expense</a></li>
-                    <li class="nav-item"><a class="nav-link" href="{{ url_for('budget_settings') }}">Budget Settings</a></li>
-                </ul>
-                <form method="POST" action="{{ url_for('logout') }}">
-                    <button type="submit" class="btn btn-outline-danger">Logout</button>
-                </form>
-            </div>
-        </div>
-    </nav>
-    <div class="container mt-4">
-        <h2>Welcome, {{ session.get('username', 'User') }}</h2>
-        
-        <!-- Flash Messages -->
-        {% with messages = get_flashed_messages() %}
-            {% if messages %}
-                <div class="alert alert-info">
-                    {{ messages[0] }}
-                </div>
-            {% endif %}
-        {% endwith %}
+{% extends "base.html" %}
 
-        <!-- Overview cards -->
-        <div class="row">
-            <div class="col-md-4 mb-3">
-                <div class="card">
-                    <div class="card-body">
-                        <h5 class="card-title">Total Spending</h5>
-                        <p class="card-text">R {{ total_spending | default(0) }}</p>
-                    </div>
-                </div>
-            </div>
-            <div class="col-md-4 mb-3">
-                <div class="card">
-                    <div class="card-body">
-                        <h5 class="card-title">Remaining Budget</h5>
-                        <p class="card-text">R {{ remaining_budget | default(0) }}</p>
-                    </div>
-                </div>
-            </div>
-            <div class="col-md-4 mb-3">
-                <div class="card">
-                    <div class="card-body">
-                        <h5 class="card-title">Categories Used</h5>
-                        <p class="card-text">{{ categories_count | default(0) }}</p>
-                    </div>
-                </div>
-            </div>
-        </div>
+{% block title %}Dashboard - Budgeteer{% endblock %}
 
-        <!-- Charts Section with matplotlib image -->
-        <div class="row mt-4">
-            <div class="col-md-8">
-                <div class="card">
-                    <div class="card-body">
-                        <h5 class="card-title">Spending by Category</h5>
-                        {% if chart_image %}
-                            <img src="data:image/png;base64,{{ chart_image }}" alt="Spending by Category" class="img-fluid">
-                        {% else %}
-                            <p class="text-muted">No expense data available for chart.</p>
-                        {% endif %}
-                    </div>
-                </div>
-            </div>
-        </div>
+{% block content %}
+<div class="row mb-4">
+    <div class="col">
+        <h2>Dashboard</h2>
+        <p class="text-muted">Welcome back, {{ session.get('username', 'User') }}! Here's your financial overview.</p>
+    </div>
+</div>
 
-        <!-- Recent expenses table -->
-        <div class="row mt-4">
-            <div class="col">
-                <div class="card">
-                    <div class="card-body">
-                        <h4 class="card-title">Recent Expenses</h4>
-                        {% if recent_expenses %}
-                        <div class="table-responsive">
-                            <table class="table table-striped">
-                                <thead>
-                                    <tr>
-                                        <th>Date</th>
-                                        <th>Amount</th>
-                                        <th>Description</th>
-                                        <th>Category</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {% for expense in recent_expenses %}
-                                    <tr>
-                                        <td>{{ expense.date }}</td>
-                                        <td>R {{ expense.amount }}</td>
-                                        <td>{{ expense.description }}</td>
-                                        <td>{{ expense.category }}</td>
-                                    </tr>
-                                    {% endfor %}
-                                </tbody>
-                            </table>
-                        </div>
-                        {% else %}
-                        <p>No expenses recorded yet.</p>
-                        {% endif %}
+<!-- Overview Cards -->
+<div class="row mb-4">
+    <div class="col-md-3 mb-3">
+        <div class="card dashboard-card h-100">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <h6 class="card-title text-muted">Total Spending</h6>
+                        <h3 class="mb-0">R {{ total_spending | default(0) | round(2) }}</h3>
+                    </div>
+                    <div class="text-primary">
+                        <i class="fas fa-chart-line fa-2x"></i>
                     </div>
                 </div>
             </div>
         </div>
     </div>
-    
-    <script src="{{ url_for('static', filename='js/bootstrap.bundle.min.js') }}"></script>
-</body>
-</html>
+    <div class="col-md-3 mb-3">
+        <div class="card dashboard-card h-100">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <h6 class="card-title text-muted">Remaining Budget</h6>
+                        <h3 class="mb-0 {% if remaining_budget and remaining_budget < 0 %}text-danger{% else %}text-success{% endif %}">
+                            R {{ remaining_budget | default(0) | round(2) }}
+                        </h3>
+                    </div>
+                    <div class="{% if remaining_budget and remaining_budget < 0 %}text-danger{% else %}text-success{% endif %}">
+                        <i class="fas fa-wallet fa-2x"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3 mb-3">
+        <div class="card dashboard-card h-100">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <h6 class="card-title text-muted">Monthly Income</h6>
+                        <h3 class="mb-0">R {{ monthly_income | default(0) | round(2) }}</h3>
+                    </div>
+                    <div class="text-info">
+                        <i class="fas fa-money-bill-wave fa-2x"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3 mb-3">
+        <div class="card dashboard-card h-100">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <h6 class="card-title text-muted">Categories Used</h6>
+                        <h3 class="mb-0">{{ categories_count | default(0) }}</h3>
+                    </div>
+                    <div class="text-warning">
+                        <i class="fas fa-tags fa-2x"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <!-- Chart Section -->
+    <div class="col-lg-8 mb-4">
+        <div class="card">
+            <div class="card-body">
+                <h5 class="card-title">Spending by Category</h5>
+                {% if chart_image %}
+                    <img src="data:image/png;base64,{{ chart_image }}" alt="Spending by Category" class="img-fluid rounded">
+                {% else %}
+                    <div class="text-center py-5">
+                        <i class="fas fa-chart-pie fa-3x text-muted mb-3"></i>
+                        <p class="text-muted">No expense data available for chart.</p>
+                        <a href="{{ url_for('expense_entry') }}" class="btn btn-primary">Add Your First Expense</a>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Quick Actions -->
+    <div class="col-lg-4 mb-4">
+        <div class="card">
+            <div class="card-body">
+                <h5 class="card-title">Quick Actions</h5>
+                <div class="d-grid gap-2">
+                    <a href="{{ url_for('expense_entry') }}" class="btn btn-primary">
+                        <i class="fas fa-plus me-2"></i>Add Expense
+                    </a>
+                    <a href="{{ url_for('budget_settings') }}" class="btn btn-outline-primary">
+                        <i class="fas fa-cog me-2"></i>Budget Settings
+                    </a>
+                    <a href="{{ url_for('profile') }}" class="btn btn-outline-primary">
+                        <i class="fas fa-user me-2"></i>Update Profile
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <!-- Budget Progress -->
+        <div class="card mt-4">
+            <div class="card-body">
+                <h5 class="card-title">Budget Health</h5>
+                {% if monthly_income and monthly_income > 0 %}
+                    {% set budget_usage = ((total_spending or 0) / monthly_income * 100) | round(1) %}
+                    <div class="progress mb-3" style="height: 20px;">
+                        <div class="progress-bar {% if budget_usage > 90 %}bg-danger{% elif budget_usage > 75 %}bg-warning{% else %}bg-success{% endif %}" 
+                             style="width: '{{ budget_usage }}%'">
+                            {{ budget_usage }}%
+                        </div>
+                    </div>
+                    <p class="small text-muted mb-0">
+                        You've used {{ budget_usage }}% of your monthly income
+                    </p>
+                {% else %}
+                    <div class="alert alert-warning">
+                        <i class="fas fa-exclamation-triangle me-2"></i>
+                        Please set up your monthly income in your profile to track budget health.
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Category Budget Progress -->
+        {% if category_budgets %}
+        <div class="card mt-4">
+            <div class="card-body">
+                <h5 class="card-title">Category Budgets</h5>
+                {% for category, data in category_budgets.items() %}
+                    {% if data.limit > 0 %}
+                        {% set progress_percentage = (data.spending / data.limit * 100) | round(1) if data.limit > 0 else 0 %}
+                        <div class="mb-3">
+                            <div class="d-flex justify-content-between mb-1">
+                                <small class="fw-bold">{{ category }}</small>
+                                <small>R {{ data.spending | round(2) }} / R {{ data.limit | round(2) }}</small>
+                            </div>
+                            <div class="progress" style="height: 8px;">
+                                <div class="progress-bar {% if progress_percentage > 100 %}bg-danger{% elif progress_percentage > 80 %}bg-warning{% else %}bg-success{% endif %}" 
+                                     style="width: '{{ progress_percentage }}%'">
+                                </div>
+                            </div>
+                        </div>
+                    {% endif %}
+                {% endfor %}
+            </div>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Recent Expenses -->
+<div class="row mt-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <h5 class="card-title mb-0">Recent Expenses</h5>
+                    <a href="{{ url_for('expense_entry') }}" class="btn btn-sm btn-primary">View All</a>
+                </div>
+                {% if recent_expenses %}
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th>Date</th>
+                                <th>Amount</th>
+                                <th>Description</th>
+                                <th>Category</th>
+                                <th>Confidence</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for expense in recent_expenses %}
+                            <tr>
+                                <td>{{ expense.date.strftime('%Y-%m-%d') }}</td>
+                                <td class="fw-bold">R {{ expense.amount }}</td>
+                                <td>{{ expense.description }}</td>
+                                <td>
+                                    <span class="badge bg-primary">{{ expense.category }}</span>
+                                </td>
+                                <td>
+                                    <span class="badge {% if expense.confidence_score > 0.8 %}bg-success{% elif expense.confidence_score > 0.6 %}bg-warning{% else %}bg-secondary{% endif %}">
+                                        {{ (expense.confidence_score * 100) | round(1) }}%
+                                    </span>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <div class="text-center py-4">
+                    <i class="fas fa-receipt fa-3x text-muted mb-3"></i>
+                    <p class="text-muted">No expenses recorded yet.</p>
+                    <a href="{{ url_for('expense_entry') }}" class="btn btn-primary">Add Your First Expense</a>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

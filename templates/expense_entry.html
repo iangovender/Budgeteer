@@ -1,40 +1,21 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Add Expense</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/bootstrap.min.css') }}">
-</head>
-<body>
-    <nav class="navbar navbar-expand-lg navbar-light bg-light">
-        <div class="container-fluid">
-            <a class="navbar-brand" href="{{ url_for('dashboard') }}">Expense Tracker</a>
-            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
-                <span class="navbar-toggler-icon"></span>
-            </button>
-            <div class="collapse navbar-collapse" id="navbarNav">
-                <ul class="navbar-nav me-auto">
-                    <li class="nav-item"><a class="nav-link" href="{{ url_for('dashboard') }}">Dashboard</a></li>
-                    <li class="nav-item"><a class="nav-link active" href="{{ url_for('expense_entry') }}">Add Expense</a></li>
-                    <li class="nav-item"><a class="nav-link" href="{{ url_for('budget_settings') }}">Budget Settings</a></li>
-                </ul>
-                <form method="POST" action="{{ url_for('logout') }}">
-                    <button type="submit" class="btn btn-outline-danger">Logout</button>
-                </form>
-            </div>
-        </div>
-    </nav>
+{% extends "base.html" %}
 
-    <div class="container mt-4">
+{% block title %}Add Expense - Budgeteer{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
         <h2>Add New Expense</h2>
         
         <!-- Flash Messages -->
-        {% with messages = get_flashed_messages() %}
+        {% with messages = get_flashed_messages(with_categories=true) %}
             {% if messages %}
-                <div class="alert alert-warning">
-                    {{ messages[0] }}
-                </div>
+                {% for category, message in messages %}
+                    <div class="alert alert-{{ category if category != 'message' else 'info' }} alert-dismissible fade show" role="alert">
+                        {{ message }}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                    </div>
+                {% endfor %}
             {% endif %}
         {% endwith %}
 
@@ -43,7 +24,8 @@
             <div class="col-md-6">
                 <div class="card">
                     <div class="card-body">
-                        <form method="POST" action="{{ url_for('add_expense') }}">
+                        <!-- FIX: Changed action to expense_entry -->
+                        <form method="POST" action="{{ url_for('expense_entry') }}">
                             <div class="mb-3">
                                 <label for="date" class="form-label">Date</label>
                                 <input type="date" class="form-control" id="date" name="date" required>
@@ -80,7 +62,7 @@
 
         <!-- Recent Expenses -->
         <div class="row mt-4">
-            <div class="col">
+            <div class="col-12">
                 <div class="card">
                     <div class="card-body">
                         <h4 class="card-title">Recent Expenses</h4>
@@ -99,7 +81,7 @@
                                 <tbody>
                                     {% for expense in recent_expenses %}
                                     <tr>
-                                        <td>{{ expense.date }}</td>
+                                        <td>{{ expense.date.strftime('%Y-%m-%d') }}</td>
                                         <td>R {{ expense.amount }}</td>
                                         <td>{{ expense.description }}</td>
                                         <td>{{ expense.category }}</td>
@@ -117,14 +99,15 @@
             </div>
         </div>
     </div>
+</div>
+{% endblock %}
 
-    <script src="{{ url_for('static', filename='js/bootstrap.bundle.min.js') }}"></script>
-    <script>
-        // Set today's date as default
-        document.getElementById('date').value = new Date().toISOString().split('T')[0];
-        
-        // Focus on description field for better UX
-        document.getElementById('description').focus();
-    </script>
-</body>
-</html>
+{% block extra_js %}
+<script>
+    // Set today's date as default
+    document.getElementById('date').value = new Date().toISOString().split('T')[0];
+    
+    // Focus on description field for better UX
+    document.getElementById('description').focus();
+</script>
+{% endblock %}

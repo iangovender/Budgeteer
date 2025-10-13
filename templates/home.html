@@ -1,0 +1,55 @@
+{% extends "base.html" %}
+
+{% block title %}Welcome to Budgeteer{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-8">
+        <div class="card text-center">
+            <div class="card-body py-5">
+                <div class="hero-icon mb-4">
+                    <i class="fa fa-pie-chart fa-5x text-primary" aria-hidden="true"></i>
+                </div>
+                <h1 class="card-title display-4 fw-bold text-primary mb-3">Budgeteer</h1>
+                <p class="card-subtitle h5 text-muted mb-4">Smart Expense Tracking & Budget Management</p>
+                <div class="divider mx-auto mb-4" style="width: 100px; height: 3px; background: linear-gradient(to right, #42a5f5, #1e88e5); border-radius: 2px;"></div>
+                <p class="card-text lead mb-4">Track your expenses, set budgets, and gain insights into your spending habits with our intelligent categorization system.</p>
+                <div class="d-grid gap-3 d-sm-flex justify-content-sm-center">
+                    <a href="{{ url_for('login') }}" class="btn btn-primary btn-lg px-4 gap-3">Get Started</a>
+                    <a href="#features" class="btn btn-outline-primary btn-lg px-4">Learn More</a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div id="features" class="row mt-5">
+    <div class="col-md-4 mb-4">
+        <div class="card text-center h-100">
+            <div class="card-body">
+                <i class="fa fa-line-chart fa-3x text-primary mb-3"></i>
+                <h5 class="card-title">Smart Categorization</h5>
+                <p class="card-text">Automatically categorizes your expenses using AI-powered analysis of transaction descriptions.</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4 mb-4">
+        <div class="card text-center h-100">
+            <div class="card-body">
+                <i class="fa fa-bullseye fa-3x text-success mb-3"></i>
+                <h5 class="card-title">Budget Tracking</h5>
+                <p class="card-text">Set monthly budgets for different categories and track your spending against your goals.</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4 mb-4">
+        <div class="card text-center h-100">
+            <div class="card-body">
+                <i class="fa fa-bar-chart fa-3x text-info mb-3"></i>
+                <h5 class="card-title">Visual Reports</h5>
+                <p class="card-text">Get clear visual insights into your spending patterns with interactive charts and graphs.</p>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
