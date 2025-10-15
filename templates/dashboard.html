@@ -3,6 +3,13 @@
 {% block title %}Dashboard - Budgeteer{% endblock %}
 
 {% block content %}
+<style>
+    .border-positive { border-left-color: #22c55e !important; }
+    .border-negative { border-left-color: #ef4444 !important; }
+    .text-positive { color: #22c55e !important; }
+    .text-negative { color: #ef4444 !important; }
+</style>
+
 <div class="row mb-4">
     <div class="col">
         <h2>Dashboard</h2>
@@ -13,14 +20,14 @@
 <!-- Overview Cards -->
 <div class="row mb-4">
     <div class="col-md-3 mb-3">
-        <div class="card dashboard-card h-100">
+        <div class="card dashboard-card h-100" style="border-left-color: #42a5f5;">
             <div class="card-body">
                 <div class="d-flex justify-content-between align-items-center">
                     <div>
-                        <h6 class="card-title text-muted">Total Spending</h6>
-                        <h3 class="mb-0">R {{ total_spending | default(0) | round(2) }}</h3>
+                        <h6 class="card-title text-muted mb-2" style="font-size: 0.9rem;">Total Spending</h6>
+                        <h3 class="mb-0" style="color: #1e293b; font-weight: 600;">R {{ total_spending | default(0) | round(2) }}</h3>
                     </div>
-                    <div class="text-primary">
+                    <div style="color: #42a5f5;">
                         <i class="fas fa-chart-line fa-2x"></i>
                     </div>
                 </div>
@@ -28,16 +35,16 @@
         </div>
     </div>
     <div class="col-md-3 mb-3">
-        <div class="card dashboard-card h-100">
+        <div class="card dashboard-card h-100 {% if remaining_budget and remaining_budget < 0 %}border-negative{% else %}border-positive{% endif %}">
             <div class="card-body">
                 <div class="d-flex justify-content-between align-items-center">
                     <div>
-                        <h6 class="card-title text-muted">Remaining Budget</h6>
-                        <h3 class="mb-0 {% if remaining_budget and remaining_budget < 0 %}text-danger{% else %}text-success{% endif %}">
+                        <h6 class="card-title text-muted mb-2" style="font-size: 0.9rem;">Remaining Budget</h6>
+                        <h3 class="mb-0 {% if remaining_budget and remaining_budget < 0 %}text-negative{% else %}text-positive{% endif %}" style="font-weight: 600;">
                             R {{ remaining_budget | default(0) | round(2) }}
                         </h3>
                     </div>
-                    <div class="{% if remaining_budget and remaining_budget < 0 %}text-danger{% else %}text-success{% endif %}">
+                    <div class="{% if remaining_budget and remaining_budget < 0 %}text-negative{% else %}text-positive{% endif %}">
                         <i class="fas fa-wallet fa-2x"></i>
                     </div>
                 </div>
@@ -45,14 +52,14 @@
         </div>
     </div>
     <div class="col-md-3 mb-3">
-        <div class="card dashboard-card h-100">
+        <div class="card dashboard-card h-100" style="border-left-color: #3b82f6;">
             <div class="card-body">
                 <div class="d-flex justify-content-between align-items-center">
                     <div>
-                        <h6 class="card-title text-muted">Monthly Income</h6>
-                        <h3 class="mb-0">R {{ monthly_income | default(0) | round(2) }}</h3>
+                        <h6 class="card-title text-muted mb-2" style="font-size: 0.9rem;">Monthly Income</h6>
+                        <h3 class="mb-0" style="color: #1e293b; font-weight: 600;">R {{ monthly_income | default(0) | round(2) }}</h3>
                     </div>
-                    <div class="text-info">
+                    <div style="color: #3b82f6;">
                         <i class="fas fa-money-bill-wave fa-2x"></i>
                     </div>
                 </div>
@@ -60,14 +67,14 @@
         </div>
     </div>
     <div class="col-md-3 mb-3">
-        <div class="card dashboard-card h-100">
+        <div class="card dashboard-card h-100" style="border-left-color: #f59e0b;">
             <div class="card-body">
                 <div class="d-flex justify-content-between align-items-center">
                     <div>
-                        <h6 class="card-title text-muted">Categories Used</h6>
-                        <h3 class="mb-0">{{ categories_count | default(0) }}</h3>
+                        <h6 class="card-title text-muted mb-2" style="font-size: 0.9rem;">Categories Used</h6>
+                        <h3 class="mb-0" style="color: #1e293b; font-weight: 600;">{{ categories_count | default(0) }}</h3>
                     </div>
-                    <div class="text-warning">
+                    <div style="color: #f59e0b;">
                         <i class="fas fa-tags fa-2x"></i>
                     </div>
                 </div>
@@ -81,7 +88,7 @@
     <div class="col-lg-8 mb-4">
         <div class="card">
             <div class="card-body">
-                <h5 class="card-title">Spending by Category</h5>
+                <h5 class="card-title mb-4">Spending by Category</h5>
                 {% if chart_image %}
                     <img src="data:image/png;base64,{{ chart_image }}" alt="Spending by Category" class="img-fluid rounded">
                 {% else %}
@@ -99,7 +106,7 @@
     <div class="col-lg-4 mb-4">
         <div class="card">
             <div class="card-body">
-                <h5 class="card-title">Quick Actions</h5>
+                <h5 class="card-title mb-3">Quick Actions</h5>
                 <div class="d-grid gap-2">
                     <a href="{{ url_for('expense_entry') }}" class="btn btn-primary">
                         <i class="fas fa-plus me-2"></i>Add Expense
@@ -117,12 +124,16 @@
         <!-- Budget Progress -->
         <div class="card mt-4">
             <div class="card-body">
-                <h5 class="card-title">Budget Health</h5>
+                <h5 class="card-title mb-3">Budget Health</h5>
                 {% if monthly_income and monthly_income > 0 %}
                     {% set budget_usage = ((total_spending or 0) / monthly_income * 100) | round(1) %}
-                    <div class="progress mb-3" style="height: 20px;">
-                        <div class="progress-bar {% if budget_usage > 90 %}bg-danger{% elif budget_usage > 75 %}bg-warning{% else %}bg-success{% endif %}" 
-                             style="width: '{{ budget_usage }}%'">
+                    {% set display_usage = budget_usage if budget_usage <= 100 else 100 %}
+                    <style>
+                        #budget-progress-bar { width: {{ display_usage }}%; }
+                    </style>
+                    <div class="progress mb-3" style="height: 25px; border-radius: 8px;">
+                        <div id="budget-progress-bar" class="progress-bar {% if budget_usage > 90 %}bg-danger{% elif budget_usage > 75 %}bg-warning{% else %}bg-success{% endif %}" 
+                             style="font-weight: 600;">
                             {{ budget_usage }}%
                         </div>
                     </div>
@@ -142,18 +153,21 @@
         {% if category_budgets %}
         <div class="card mt-4">
             <div class="card-body">
-                <h5 class="card-title">Category Budgets</h5>
+                <h5 class="card-title mb-3">Category Budgets</h5>
                 {% for category, data in category_budgets.items() %}
                     {% if data.limit > 0 %}
                         {% set progress_percentage = (data.spending / data.limit * 100) | round(1) if data.limit > 0 else 0 %}
+                        {% set display_progress = progress_percentage if progress_percentage <= 100 else 100 %}
+                        <style>
+                            #category-progress-{{ loop.index }} { width: {{ display_progress }}%; }
+                        </style>
                         <div class="mb-3">
                             <div class="d-flex justify-content-between mb-1">
                                 <small class="fw-bold">{{ category }}</small>
                                 <small>R {{ data.spending | round(2) }} / R {{ data.limit | round(2) }}</small>
                             </div>
-                            <div class="progress" style="height: 8px;">
-                                <div class="progress-bar {% if progress_percentage > 100 %}bg-danger{% elif progress_percentage > 80 %}bg-warning{% else %}bg-success{% endif %}" 
-                                     style="width: '{{ progress_percentage }}%'">
+                            <div class="progress" style="height: 10px; border-radius: 5px;">
+                                <div id="category-progress-{{ loop.index }}" class="progress-bar {% if progress_percentage > 100 %}bg-danger{% elif progress_percentage > 80 %}bg-warning{% else %}bg-success{% endif %}">
                                 </div>
                             </div>
                         </div>

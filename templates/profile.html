@@ -29,6 +29,30 @@
 
                 <hr>
 
+                <h5 class="mb-3">Update Account Details</h5>
+                <form method="POST" action="{{ url_for('profile') }}">
+                    <div class="mb-3">
+                        <label for="username" class="form-label">Username</label>
+                        <input type="text" class="form-control" id="username" name="username" value="{{ user.username }}" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="email" class="form-label">Email</label>
+                        <input type="email" class="form-control" id="email" name="email" value="{{ user.email }}" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="current_password" class="form-label">Current Password (required to make changes)</label>
+                        <input type="password" class="form-control" id="current_password" name="current_password" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="new_password" class="form-label">New Password (leave blank to keep current)</label>
+                        <input type="password" class="form-control" id="new_password" name="new_password" placeholder="Enter new password">
+                        <div class="form-text">Leave this field empty if you don't want to change your password.</div>
+                    </div>
+                    <button type="submit" class="btn btn-primary">Update Profile</button>
+                </form>
+
+                <hr>
+
                 <h5 class="mb-3">Monthly Income Setup</h5>
                 {% if not user.monthly_income or user.monthly_income == 0 %}
                     <div class="alert alert-warning">
@@ -37,7 +61,7 @@
                     </div>
                 {% endif %}
                 
-                <form method="POST">
+                <form method="POST" action="{{ url_for('update_income') }}">
                     <div class="mb-3">
                         <label for="monthly_income" class="form-label">Monthly Income (R)</label>
                         <input type="number" step="0.01" class="form-control" id="monthly_income" 

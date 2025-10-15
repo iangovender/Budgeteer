@@ -3,97 +3,116 @@
 {% block title %}Add Expense - Budgeteer{% endblock %}
 
 {% block content %}
-<div class="row">
+<div class="row mb-4">
     <div class="col-12">
         <h2>Add New Expense</h2>
-        
-        <!-- Flash Messages -->
-        {% with messages = get_flashed_messages(with_categories=true) %}
-            {% if messages %}
-                {% for category, message in messages %}
-                    <div class="alert alert-{{ category if category != 'message' else 'info' }} alert-dismissible fade show" role="alert">
-                        {{ message }}
-                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-                    </div>
-                {% endfor %}
-            {% endif %}
-        {% endwith %}
+        <p class="text-muted">Track your spending by adding expenses below</p>
+    </div>
+</div>
 
-        <!-- Expense Form -->
-        <div class="row">
-            <div class="col-md-6">
-                <div class="card">
-                    <div class="card-body">
-                        <!-- FIX: Changed action to expense_entry -->
-                        <form method="POST" action="{{ url_for('expense_entry') }}">
-                            <div class="mb-3">
-                                <label for="date" class="form-label">Date</label>
-                                <input type="date" class="form-control" id="date" name="date" required>
-                            </div>
-                            <div class="mb-3">
-                                <label for="amount" class="form-label">Amount (R)</label>
-                                <input type="number" step="0.01" min="0.01" class="form-control" id="amount" name="amount" required>
-                            </div>
-                            <div class="mb-3">
-                                <label for="description" class="form-label">Description</label>
-                                <input type="text" class="form-control" id="description" name="description" required placeholder="What did you spend on?">
-                            </div>
-                            <button type="submit" class="btn btn-primary">Add Expense</button>
-                        </form>
+<!-- Expense Form -->
+<div class="row">
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-body">
+                <h5 class="card-title mb-4">Expense Details</h5>
+                <form method="POST" action="{{ url_for('expense_entry') }}">
+                    <div class="mb-3">
+                        <label for="date" class="form-label">Date</label>
+                        <input type="date" class="form-control" id="date" name="date" required>
                     </div>
-                </div>
+                    <div class="mb-3">
+                        <label for="amount" class="form-label">Amount (R)</label>
+                        <input type="number" step="0.01" min="0.01" class="form-control" id="amount" name="amount" required placeholder="0.00">
+                    </div>
+                    <div class="mb-3">
+                        <label for="description" class="form-label">Description</label>
+                        <input type="text" class="form-control" id="description" name="description" required placeholder="What did you spend on?">
+                    </div>
+                    <button type="submit" class="btn btn-primary w-100">
+                        <i class="fas fa-plus me-2"></i>Add Expense
+                    </button>
+                </form>
             </div>
         </div>
 
-        <!-- Category Prediction Result -->
-        {% if category %}
-        <div class="row mt-4">
-            <div class="col-md-6">
-                <div class="alert alert-info">
-                    <h5>Expense Added Successfully!</h5>
-                    <p><strong>Category:</strong> {{ category }}</p>
-                    <p><strong>Amount:</strong> R {{ amount }}</p>
-                    <p><strong>Description:</strong> {{ description }}</p>
-                    <p><strong>Confidence:</strong> {{ (confidence_score * 100)|round(1) }}%</p>
-                </div>
+        <!-- Category Info Card -->
+        <div class="card mt-4">
+            <div class="card-body">
+                <h6 class="card-title mb-3"><i class="fas fa-info-circle me-2 text-primary"></i>Auto-Categorization</h6>
+                <p class="small text-muted mb-0">
+                    Your expenses are automatically categorized based on the description you provide. 
+                    The system analyzes keywords to assign the most relevant category.
+                </p>
             </div>
         </div>
-        {% endif %}
+    </div>
 
-        <!-- Recent Expenses -->
-        <div class="row mt-4">
-            <div class="col-12">
-                <div class="card">
-                    <div class="card-body">
-                        <h4 class="card-title">Recent Expenses</h4>
-                        {% if recent_expenses %}
-                        <div class="table-responsive">
-                            <table class="table table-striped">
-                                <thead>
-                                    <tr>
-                                        <th>Date</th>
-                                        <th>Amount</th>
-                                        <th>Description</th>
-                                        <th>Category</th>
-                                        <th>Confidence</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {% for expense in recent_expenses %}
-                                    <tr>
-                                        <td>{{ expense.date.strftime('%Y-%m-%d') }}</td>
-                                        <td>R {{ expense.amount }}</td>
-                                        <td>{{ expense.description }}</td>
-                                        <td>{{ expense.category }}</td>
-                                        <td>{{ (expense.confidence_score * 100)|round(1) }}%</td>
-                                    </tr>
-                                    {% endfor %}
-                                </tbody>
-                            </table>
-                        </div>
-                        {% else %}
-                        <p class="text-muted">No expenses recorded yet.</p>
-                        {% endif %}
+    <!-- Recent Expenses -->
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-body">
+                <h5 class="card-title mb-4">Recent Expenses</h5>
+                {% if recent_expenses %}
+                <div class="table-responsive">
+                    <table class="table table-sm">
+                        <thead>
+                            <tr>
+                                <th>Date</th>
+                                <th>Details</th>
+                                <th>Amount</th>
+                                <th>Category</th>
+                                <th>Action</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for expense in recent_expenses %}
+                            <tr>
+                                <td style="white-space: nowrap;">{{ expense.date.strftime('%Y-%m-%d') }}</td>
+                                <td>{{ expense.description[:30] }}{% if expense.description|length > 30 %}...{% endif %}</td>
+                                <td class="fw-bold">R {{ expense.amount }}</td>
+                                <td>
+                                    <span class="badge bg-primary" style="font-size: 0.75rem;">{{ expense.category }}</span>
+                                </td>
+                                <td>
+                                    <form method="POST" action="{{ url_for('delete_expense', expense_id=expense.id) }}" class="d-inline" onsubmit="return confirm('Are you sure you want to delete this expense?');">
+                                        <button type="submit" class="btn btn-sm btn-outline-danger" title="Delete Expense">
+                                            <i class="fas fa-trash"></i>
+                                        </button>
+                                    </form>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <div class="text-center py-4">
+                    <i class="fas fa-receipt fa-3x text-muted mb-3"></i>
+                    <p class="text-muted">No expenses recorded yet.</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Quick Stats -->
+        <div class="card mt-4">
+            <div class="card-body">
+                <h6 class="card-title mb-3"><i class="fas fa-chart-line me-2 text-success"></i>Quick Stats</h6>
+                <div class="row text-center">
+                    <div class="col-6">
+                        <h4 class="mb-0 text-primary">{{ recent_expenses|length }}</h4>
+                        <small class="text-muted">Recent Items</small>
+                    </div>
+                    <div class="col-6">
+                        <h4 class="mb-0 text-success">
+                            {% set total = namespace(value=0) %}
+                            {% for expense in recent_expenses %}
+                                {% set total.value = total.value + expense.amount %}
+                            {% endfor %}
+                            R {{ total.value | round(2) }}
+                        </h4>
+                        <small class="text-muted">Total Recent</small>
                     </div>
                 </div>
             </div>
@@ -107,7 +126,7 @@
     // Set today's date as default
     document.getElementById('date').value = new Date().toISOString().split('T')[0];
     
-    // Focus on description field for better UX
-    document.getElementById('description').focus();
+    // Focus on amount field for better UX
+    document.getElementById('amount').focus();
 </script>
 {% endblock %}

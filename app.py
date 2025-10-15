@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, redirect, url_for, session, flash
+from flask import Flask, render_template, request, redirect, url_for, session, flash, jsonify
 from werkzeug.security import generate_password_hash, check_password_hash
 import os
 from datetime import datetime
@@ -215,6 +215,20 @@ def expense_entry():
     
     return render_template('expense_entry.html', recent_expenses=recent_expenses)
 
+@app.route('/delete_expense/<int:expense_id>', methods=['POST'])
+@login_required
+def delete_expense(expense_id):
+    expense = Expense.query.filter_by(id=expense_id, user_id=session['user_id']).first()
+    
+    if expense:
+        db.session.delete(expense)
+        db.session.commit()
+        flash('Expense deleted successfully!', 'success')
+    else:
+        flash('Expense not found or you do not have permission to delete it.', 'danger')
+    
+    return redirect(url_for('expense_entry'))
+
 @app.route('/budget_settings', methods=['GET', 'POST'])
 @login_required
 def budget_settings():
@@ -294,12 +308,55 @@ def profile():
     user = User.query.get(user_id)
     
     if request.method == 'POST':
-        user.monthly_income = float(request.form['monthly_income'])
+        username = request.form['username']
+        email = request.form['email']
+        current_password = request.form['current_password']
+        new_password = request.form['new_password']
+        
+        # Verify current password
+        if not check_password_hash(user.password_hash, current_password):
+            flash('Current password is incorrect.', 'danger')
+            return redirect(url_for('profile'))
+        
+        # Check if username is already taken by another user
+        if username != user.username and User.query.filter_by(username=username).first():
+            flash('Username already exists.', 'danger')
+            return redirect(url_for('profile'))
+        
+        # Check if email is already taken by another user
+        if email != user.email and User.query.filter_by(email=email).first():
+            flash('Email already registered.', 'danger')
+            return redirect(url_for('profile'))
+        
+        # Update user details
+        user.username = username
+        user.email = email
+        
+        # Update password if provided
+        if new_password:
+            user.password_hash = generate_password_hash(new_password)
+        
         db.session.commit()
+        
+        # Update session username if changed
+        session['username'] = username
+        
         flash('Profile updated successfully!', 'success')
         return redirect(url_for('profile'))
     
     return render_template('profile.html', user=user)
+
+@app.route('/update_income', methods=['POST'])
+@login_required
+def update_income():
+    user_id = session['user_id']
+    user = User.query.get(user_id)
+    
+    user.monthly_income = float(request.form['monthly_income'])
+    db.session.commit()
+    
+    flash('Monthly income updated successfully!', 'success')
+    return redirect(url_for('profile'))
 
 if __name__ == '__main__':
     with app.app_context():
