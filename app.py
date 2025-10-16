@@ -409,6 +409,12 @@ def model_status():
     }
     return jsonify(status)
 
+@app.route('/budget_forecast')
+@login_required
+def budget_forecast():
+    """Budget and forecast page - placeholder for future implementation"""
+    return render_template('budget_forecast.html')
+
 if __name__ == '__main__':
     with app.app_context():
         db.create_all()

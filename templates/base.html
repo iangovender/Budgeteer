@@ -354,7 +354,6 @@
             width: 100%;
         }
 
-        /* Remove spinner from number inputs */
         input[type=number]::-webkit-outer-spin-button,
         input[type=number]::-webkit-inner-spin-button {
             -webkit-appearance: none;
@@ -454,6 +453,9 @@
             </a></li>
             <li><a href="{{ url_for('budget_settings') }}" class="{% if request.endpoint == 'budget_settings' %}active{% endif %}">
                 <i class="fas fa-cog"></i>Budget Settings
+            </a></li>
+            <li><a href="{{ url_for('budget_forecast') }}" class="{% if request.endpoint == 'budget_forecast' %}active{% endif %}">
+                <i class="fas fa-chart-line"></i>Budget & Forecast
             </a></li>
         </ul>
     </div>
