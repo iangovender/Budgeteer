@@ -43,14 +43,14 @@
                         </div>
                         <button type="submit" class="login-button">Sign In</button>
                     </form>
-                    <div class="text-center mt-3">
-                        <a href="#" class="text-muted small">Forgot your password?</a>
+                    <div class="text-center mt-2">
+                        <p class="small text-muted">Don't have an account? <a href="#" onclick="switchToSignup()">Click here to create one</a></p>
                     </div>
                 </div>
 
                 <!-- Signup Tab -->
                 <div class="tab-pane fade" id="signup" role="tabpanel">
-                    <form method="POST" action="{{ url_for('signup') }}">
+                    <form method="POST" action="{{ url_for('signup') }}" id="signupForm">
                         <div class="login-field">
                             <label for="username" class="login-label">Username</label>
                             <input type="text" class="login-input" id="username" name="username" required>
@@ -69,10 +69,13 @@
                             </div>
                         </div>
                         <button type="submit" class="login-button">Create Account</button>
-                        <div class="alert alert-info mt-3">
-                            <small><i class="fa fa-info-circle me-1"></i>You can set up your monthly income in your profile after creating an account.</small>
-                        </div>
                     </form>
+                    <div class="alert alert-info mt-3 income-info-card">
+                        <small><i class="fa fa-info-circle me-1"></i>You can set up your monthly income in your profile after creating an account.</small>
+                    </div>
+                    <div class="text-center mt-2">
+                        <p class="small text-muted">Already have an account? <a href="#" onclick="switchToLogin()">Click here to sign in</a></p>
+                    </div>
                 </div>
             </div>
         </div>
@@ -157,6 +160,12 @@
     background-color: #1565c0;
 }
 
+.income-info-card {
+    display: block !important;
+    opacity: 1 !important;
+    visibility: visible !important;
+}
+
 @keyframes fadeIn {
     from { opacity: 0; transform: translateY(-20px); }
     to { opacity: 1; transform: translateY(0); }
@@ -175,6 +184,16 @@ function togglePassword(fieldId) {
         passwordField.type = 'password';
         toggleIcon.className = 'fa fa-eye';
     }
+}
+
+function switchToSignup() {
+    const signupTab = new bootstrap.Tab(document.getElementById('signup-tab'));
+    signupTab.show();
+}
+
+function switchToLogin() {
+    const loginTab = new bootstrap.Tab(document.getElementById('login-tab'));
+    loginTab.show();
 }
 </script>
 {% endblock %}

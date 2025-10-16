@@ -31,3 +31,5 @@ Thumbs.db
 
 # Matplotlib cache
 .matplotlib/
+
+/my_distilbert_model/

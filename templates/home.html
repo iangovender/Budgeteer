@@ -13,11 +13,22 @@
                 <h1 class="card-title display-4 fw-bold text-primary mb-3">Budgeteer</h1>
                 <p class="card-subtitle h5 text-muted mb-4">Smart Expense Tracking & Budget Management</p>
                 <div class="divider mx-auto mb-4" style="width: 100px; height: 3px; background: linear-gradient(to right, #42a5f5, #1e88e5); border-radius: 2px;"></div>
-                <p class="card-text lead mb-4">Track your expenses, set budgets, and gain insights into your spending habits with our intelligent categorization system.</p>
-                <div class="d-grid gap-3 d-sm-flex justify-content-sm-center">
-                    <a href="{{ url_for('login') }}" class="btn btn-primary btn-lg px-4 gap-3">Get Started</a>
-                    <a href="#features" class="btn btn-outline-primary btn-lg px-4">Learn More</a>
-                </div>
+                
+                {% if session.get('user_id') %}
+                    <p class="card-text lead mb-4">Welcome back, {{ session.get('username', 'User') }}! You're already logged in.</p>
+                    <div class="d-grid gap-3 d-sm-flex justify-content-sm-center">
+                        <a href="{{ url_for('dashboard') }}" class="btn btn-primary btn-lg px-4 gap-3">Go to Dashboard</a>
+                        <form method="POST" action="{{ url_for('logout') }}" class="d-inline">
+                            <button type="submit" class="btn btn-outline-primary btn-lg px-4">Logout</button>
+                        </form>
+                    </div>
+                {% else %}
+                    <p class="card-text lead mb-4">Track your expenses, set budgets, and gain insights into your spending habits with our intelligent categorization system.</p>
+                    <div class="d-grid gap-3 d-sm-flex justify-content-sm-center">
+                        <a href="{{ url_for('login') }}" class="btn btn-primary btn-lg px-4 gap-3">Get Started</a>
+                        <a href="#features" class="btn btn-outline-primary btn-lg px-4">Learn More</a>
+                    </div>
+                {% endif %}
             </div>
         </div>
     </div>

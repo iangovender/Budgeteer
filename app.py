@@ -11,6 +11,7 @@ from io import BytesIO
 import base64
 from models import db, User, Expense, Budget
 from flask_migrate import Migrate
+from expense_classifier import classifier  # Import the classifier
 
 app = Flask(__name__)
 app.secret_key = 'your_secret_key_here'
@@ -20,11 +21,11 @@ app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 db.init_app(app)
 migrate = Migrate(app, db)
 
-# Categories for the application
+# Categories for the application (fallback categories)
 CATEGORIES = ['Food', 'Transport', 'Entertainment', 'Groceries', 'Bills', 'Shopping', 'Other']
 
-# Rule-based categorization
-def categorize_expense(description):
+# Rule-based categorization (fallback)
+def categorize_expense_rule_based(description):
     description = description.lower()
     
     if any(keyword in description for keyword in ['coffee', 'food', 'restaurant', 'dinner', 'lunch', 'cafe']):
@@ -33,7 +34,7 @@ def categorize_expense(description):
         return 'Transport', 0.9
     elif any(keyword in description for keyword in ['movie', 'concert', 'game', 'ticket', 'netflix']):
         return 'Entertainment', 0.9
-    elif any(keyword in description for keyword in ['grocery', 'supermarket', 'milk', 'bread', 'food']):
+    elif any(keyword in description for keyword in ['groceries', 'supermarket', 'milk', 'bread', 'food']):
         return 'Groceries', 0.9
     elif any(keyword in description for keyword in ['electricity', 'water', 'internet', 'phone', 'bill']):
         return 'Bills', 0.9
@@ -41,6 +42,22 @@ def categorize_expense(description):
         return 'Shopping', 0.9
     else:
         return 'Other', 0.8
+
+# Hybrid categorization function
+def categorize_expense(description):
+    """
+    Hybrid categorization: Try DistilBERT model first, fall back to rule-based
+    Returns: (category, confidence_score, method_used)
+    """
+    # Try model prediction first
+    model_category, model_confidence = classifier.predict(description)
+    
+    if model_category is not None:
+        return model_category, model_confidence, 'model'
+    else:
+        # Fall back to rule-based
+        rule_category, rule_confidence = categorize_expense_rule_based(description)
+        return rule_category, rule_confidence, 'rule_based'
 
 def generate_pie_chart(category_totals):
     if not category_totals:
@@ -138,7 +155,7 @@ def dashboard():
     if not expenses:
         total_spending = 0
         recent_expenses = []
-        chart_image = None
+        chart_data = None  # Changed from chart_image
         categories_count = 0
         remaining_budget = user.monthly_income if user.monthly_income else 0
         category_budgets = {}
@@ -160,7 +177,8 @@ def dashboard():
         else:
             category_sum = {}
         
-        chart_image = generate_pie_chart(category_sum)
+        # Generate Chart.js compatible data instead of PNG
+        chart_data = generate_chartjs_data(category_sum)  # Changed this line
         categories_count = len(category_sum)
         
         # Calculate remaining budget based on income minus total spending
@@ -179,11 +197,30 @@ def dashboard():
     return render_template('dashboard.html', 
                          total_spending=total_spending,
                          recent_expenses=recent_expenses,
-                         chart_image=chart_image,
+                         chart_data=chart_data,  # Changed from chart_image
                          categories_count=categories_count,
                          monthly_income=user.monthly_income,
                          remaining_budget=remaining_budget,
                          category_budgets=category_budgets)
+
+# Add this new function to generate Chart.js data
+def generate_chartjs_data(category_totals):
+    if not category_totals:
+        return None
+    
+    # Define a color palette for the chart
+    colors = [
+        '#FF6384', '#36A2EB', '#FFCE56', '#4BC0C0', 
+        '#9966FF', '#FF9F40', '#FF6384', '#C9CBCF'
+    ]
+    
+    chart_data = {
+        'labels': list(category_totals.keys()),
+        'data': list(category_totals.values()),
+        'colors': colors[:len(category_totals)]
+    }
+    
+    return chart_data
 
 @app.route('/expense_entry', methods=['GET', 'POST'])
 @login_required
@@ -193,7 +230,8 @@ def expense_entry():
         description = request.form['description']
         date = datetime.strptime(request.form['date'], '%Y-%m-%d')
         
-        category, confidence = categorize_expense(description)
+        # Use hybrid categorization
+        category, confidence, method = categorize_expense(description)
         
         new_expense = Expense(
             user_id=session['user_id'],
@@ -207,13 +245,14 @@ def expense_entry():
         db.session.add(new_expense)
         db.session.commit()
         
-        flash(f'Expense of R {amount} added to {category} category!', 'success')
+        method_text = "AI model" if method == 'model' else "rule-based system"
+        flash(f'Expense of R {amount} added to {category} category! (Classified by {method_text} with {confidence:.2f} confidence)', 'success')
         return redirect(url_for('expense_entry'))
     
-    # Get recent expenses for display
-    recent_expenses = Expense.query.filter_by(user_id=session['user_id']).order_by(Expense.date.desc()).limit(5).all()
+    # Get ALL expenses for display, ordered by date (newest first)
+    all_expenses = Expense.query.filter_by(user_id=session['user_id']).order_by(Expense.date.desc()).all()
     
-    return render_template('expense_entry.html', recent_expenses=recent_expenses)
+    return render_template('expense_entry.html', all_expenses=all_expenses)
 
 @app.route('/delete_expense/<int:expense_id>', methods=['POST'])
 @login_required
@@ -357,6 +396,18 @@ def update_income():
     
     flash('Monthly income updated successfully!', 'success')
     return redirect(url_for('profile'))
+
+@app.route('/model_status')
+@login_required
+def model_status():
+    """Endpoint to check model status"""
+    status = {
+        'model_loaded': classifier.model is not None,
+        'tokenizer_loaded': classifier.tokenizer is not None,
+        'device': str(classifier.device),
+        'num_categories': classifier.model.config.num_labels if classifier.model else 0
+    }
+    return jsonify(status)
 
 if __name__ == '__main__':
     with app.app_context():
