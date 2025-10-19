@@ -29,30 +29,6 @@
 
                 <hr>
 
-                <h5 class="mb-3">Update Account Details</h5>
-                <form method="POST" action="{{ url_for('profile') }}">
-                    <div class="mb-3">
-                        <label for="username" class="form-label">Username</label>
-                        <input type="text" class="form-control" id="username" name="username" value="{{ user.username }}" required>
-                    </div>
-                    <div class="mb-3">
-                        <label for="email" class="form-label">Email</label>
-                        <input type="email" class="form-control" id="email" name="email" value="{{ user.email }}" required>
-                    </div>
-                    <div class="mb-3">
-                        <label for="current_password" class="form-label">Current Password (required to make changes)</label>
-                        <input type="password" class="form-control" id="current_password" name="current_password" required>
-                    </div>
-                    <div class="mb-3">
-                        <label for="new_password" class="form-label">New Password (leave blank to keep current)</label>
-                        <input type="password" class="form-control" id="new_password" name="new_password" placeholder="Enter new password">
-                        <div class="form-text">Leave this field empty if you don't want to change your password.</div>
-                    </div>
-                    <button type="submit" class="btn btn-primary">Update Profile</button>
-                </form>
-
-                <hr>
-
                 <h5 class="mb-3">Monthly Income Setup</h5>
                 {% if not user.monthly_income or user.monthly_income == 0 %}
                     <div class="alert alert-warning">
@@ -61,17 +37,25 @@
                     </div>
                 {% endif %}
                 
-                <form method="POST" action="{{ url_for('update_income') }}">
+                <form method="POST" action="{{ url_for('profile') }}">
+                    {{ form.hidden_tag() }}
                     <div class="mb-3">
                         <label for="monthly_income" class="form-label">Monthly Income (R)</label>
-                        <input type="number" step="0.01" class="form-control" id="monthly_income" 
-                               name="monthly_income" value="{{ user.monthly_income if user.monthly_income else '' }}" 
-                               required>
+                        {{ form.monthly_income(class="form-control", value=user.monthly_income if user.monthly_income else '') }}
+                        {% if form.monthly_income.errors %}
+                            <div class="text-danger">
+                                {% for error in form.monthly_income.errors %}
+                                    <small>{{ error }}</small>
+                                {% endfor %}
+                            </div>
+                        {% endif %}
                         <div class="form-text">
                             This helps calculate your remaining budget and track spending against your income.
                         </div>
                     </div>
-                    <button type="submit" class="btn btn-primary">Update Income</button>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-save me-2"></i>Update Income
+                    </button>
                 </form>
 
                 {% if user.monthly_income and user.monthly_income > 0 %}
@@ -81,6 +65,41 @@
                     <p class="mb-0"><small class="text-muted">Visit the dashboard to see detailed budget analysis.</small></p>
                 </div>
                 {% endif %}
+
+                <hr>
+
+                <!-- Monthly Budget Reset -->
+                <div class="mt-4">
+                    <h5 class="mb-3">Monthly Budget Reset</h5>
+                    <p class="text-muted small mb-3">
+                        Reset your budget tracking at the start of each month to start fresh while keeping your budget limits.
+                    </p>
+                    <button type="button" class="btn btn-outline-warning w-100" data-bs-toggle="modal" data-bs-target="#resetModal">
+                        <i class="fas fa-sync-alt me-2"></i>Reset Monthly Budgets
+                    </button>
+                    <div class="mt-2 text-center">
+                        <small class="text-muted">Current: {{ current_month }}</small>
+                    </div>
+                </div>
+
+                <hr>
+
+                <div class="mt-4">
+                    <h5 class="mb-3">Account Management</h5>
+                    <div class="alert alert-info">
+                        <i class="fa fa-info-circle me-2"></i>
+                        To update your username, email, or password, please contact support or create a new account.
+                    </div>
+                    
+                    <div class="d-grid gap-2">
+                        <a href="{{ url_for('budget_settings') }}" class="btn btn-outline-primary">
+                            <i class="fas fa-cog me-2"></i>Manage Budget Settings
+                        </a>
+                        <a href="{{ url_for('dashboard') }}" class="btn btn-outline-secondary">
+                            <i class="fas fa-chart-pie me-2"></i>View Dashboard
+                        </a>
+                    </div>
+                </div>
             </div>
         </div>
     </div>

@@ -1,25 +1,295 @@
 {% extends "base.html" %}
 
-{% block title %}Budget & Forecast - Budgeteer{% endblock %}
+{% block title %}Budget Forecast - Budgeteer{% endblock %}
 
 {% block content %}
 <div class="row mb-4">
     <div class="col-12">
-        <h2>Budget & Forecast</h2>
-        <p class="text-muted">View your budget analysis and spending forecasts</p>
+        <h2>Budget Forecast</h2>
+        <p class="text-muted">Predict your future spending based on your current habits and get smart recommendations</p>
+    </div>
+</div>
+
+<!-- Forecast Summary Cards -->
+<div class="row mb-4">
+    <div class="col-md-3 mb-3">
+        <div class="card border-primary">
+            <div class="card-body text-center">
+                <i class="fas fa-chart-line fa-2x text-primary mb-2"></i>
+                <h5 class="card-title">Predicted Spending</h5>
+                <h3 class="text-primary">R {{ "%.2f"|format(predicted_total) }}</h3>
+                <small class="text-muted">{{ trend_indicator }}</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3 mb-3">
+        <div class="card border-{% if predicted_savings >= 0 %}success{% else %}danger{% endif %}">
+            <div class="card-body text-center">
+                <i class="fas fa-piggy-bank fa-2x text-{% if predicted_savings >= 0 %}success{% else %}danger{% endif %} mb-2"></i>
+                <h5 class="card-title">Predicted Savings</h5>
+                <h3 class="text-{% if predicted_savings >= 0 %}success{% else %}danger{% endif %}">R {{ "%.2f"|format(predicted_savings) }}</h3>
+                <small class="text-muted">Based on current income</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3 mb-3">
+        <div class="card border-info">
+            <div class="card-body text-center">
+                <i class="fas fa-bullseye fa-2x text-info mb-2"></i>
+                <h5 class="card-title">Budget Health</h5>
+                <h3 class="text-info">{{ budget_health }}</h3>
+                <small class="text-muted">Next month's outlook</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3 mb-3">
+        <div class="card border-warning">
+            <div class="card-body text-center">
+                <i class="fas fa-exclamation-triangle fa-2x text-warning mb-2"></i>
+                <h5 class="card-title">Risk Areas</h5>
+                <h3 class="text-warning">{{ risk_areas|length }}</h3>
+                <small class="text-muted">Categories needing attention</small>
+            </div>
+        </div>
     </div>
 </div>
 
 <div class="row">
-    <div class="col-12">
+    <!-- Prediction Chart -->
+    <div class="col-lg-8 mb-4">
         <div class="card">
             <div class="card-body">
-                <div class="text-center py-5">
-                    <i class="fas fa-chart-line fa-4x text-muted mb-3"></i>
-                    <h4 class="text-muted">Budget & Forecast Feature</h4>
+                <h5 class="card-title mb-4">Spending Forecast vs Current Month</h5>
+                <div class="chart-container" style="position: relative; height: 400px; width: 100%;">
+                    <canvas id="forecastChart"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- AI Recommendations -->
+    <div class="col-lg-4 mb-4">
+        <div class="card">
+            <div class="card-body">
+                <h5 class="card-title mb-3">
+                    <i class="fas fa-robot text-primary me-2"></i>AI Recommendations
+                </h5>
+                
+                {% if recommendations %}
+                    {% for rec in recommendations %}
+                    <div class="alert alert-{{ rec.type }} mb-3">
+                        <div class="d-flex">
+                            <div class="flex-shrink-0">
+                                <i class="fas fa-{{ rec.icon }} me-2"></i>
+                            </div>
+                            <div class="flex-grow-1">
+                                <h6 class="alert-heading">{{ rec.title }}</h6>
+                                <p class="mb-1 small">{{ rec.message }}</p>
+                                {% if rec.suggestion %}
+                                <small class="text-muted">{{ rec.suggestion }}</small>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                {% else %}
+                    <div class="text-center py-4">
+                        <i class="fas fa-chart-bar fa-3x text-muted mb-3"></i>
+                        <p class="text-muted">Add more expense data to get personalized recommendations</p>
+                    </div>
+                {% endif %}
+
+                <!-- Quick Actions -->
+                <div class="mt-4">
+                    <h6>Quick Actions</h6>
+                    <div class="d-grid gap-2">
+                        <a href="{{ url_for('budget_settings') }}" class="btn btn-outline-primary btn-sm">
+                            <i class="fas fa-cog me-2"></i>Adjust Budgets
+                        </a>
+                        <a href="{{ url_for('expense_entry') }}" class="btn btn-outline-success btn-sm">
+                            <i class="fas fa-plus me-2"></i>Add Expense
+                        </a>
+                    </div>
                 </div>
             </div>
         </div>
     </div>
 </div>
+
+<!-- Detailed Category Forecast -->
+<div class="row mt-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-body">
+                <h5 class="card-title mb-4">Category-by-Category Forecast</h5>
+                
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th>Category</th>
+                                <th>Current Month</th>
+                                <th>Predicted Next Month</th>
+                                <th>Budget Limit</th>
+                                <th>Status</th>
+                                <th>Trend</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for category in categories %}
+                            {% set current = current_spending.get(category, 0) %}
+                            {% set predicted = predicted_spending.get(category, 0) %}
+                            {% set budget = budgets.get(category, 0) %}
+                            {% set trend = predicted - current %}
+                            <tr>
+                                <td class="fw-bold">
+                                    <i class="fas fa-tag me-2 text-primary"></i>{{ category }}
+                                </td>
+                                <td>R {{ "%.2f"|format(current) }}</td>
+                                <td class="fw-bold {% if predicted > budget and budget > 0 %}text-danger{% else %}text-success{% endif %}">
+                                    R {{ "%.2f"|format(predicted) }}
+                                </td>
+                                <td>R {{ "%.2f"|format(budget) if budget else 'Not set' }}</td>
+                                <td>
+                                    {% if budget > 0 %}
+                                        {% if predicted > budget %}
+                                        <span class="badge bg-danger">Over Budget</span>
+                                        {% elif predicted > budget * 0.8 %}
+                                        <span class="badge bg-warning">Near Limit</span>
+                                        {% else %}
+                                        <span class="badge bg-success">On Track</span>
+                                        {% endif %}
+                                    {% else %}
+                                        <span class="badge bg-secondary">No Budget</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if trend > 0 %}
+                                        <span class="text-danger"><i class="fas fa-arrow-up"></i> +R {{ "%.2f"|format(trend) }}</span>
+                                    {% elif trend < 0 %}
+                                        <span class="text-success"><i class="fas fa-arrow-down"></i> R {{ "%.2f"|format(trend|abs) }}</span>
+                                    {% else %}
+                                        <span class="text-muted">No change</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Seasonal Trends -->
+{% if seasonal_trends %}
+<div class="row mt-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-body">
+                <h5 class="card-title mb-3">
+                    <i class="fas fa-calendar-alt text-info me-2"></i>Seasonal Trends
+                </h5>
+                <div class="row">
+                    {% for trend in seasonal_trends %}
+                    <div class="col-md-6 mb-2">
+                        <div class="d-flex justify-content-between align-items-center p-2 border rounded">
+                            <span class="fw-bold">{{ trend.category }}</span>
+                            <span class="badge bg-{{ 'danger' if trend.increase else 'success' }}">
+                                {{ 'Typically increases' if trend.increase else 'Typically stable' }}
+                            </span>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const forecastData = JSON.parse('{{ forecast_data | tojson | safe }}');
+    
+    const ctx = document.getElementById('forecastChart').getContext('2d');
+    const forecastChart = new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: forecastData.labels,
+            datasets: [
+                {
+                    label: 'Current Month',
+                    data: forecastData.current,
+                    backgroundColor: 'rgba(54, 162, 235, 0.6)',
+                    borderColor: 'rgba(54, 162, 235, 1)',
+                    borderWidth: 1
+                },
+                {
+                    label: 'Predicted Next Month',
+                    data: forecastData.predicted,
+                    backgroundColor: 'rgba(255, 99, 132, 0.6)',
+                    borderColor: 'rgba(255, 99, 132, 1)',
+                    borderWidth: 1
+                },
+                {
+                    label: 'Budget Limits',
+                    data: forecastData.budgets,
+                    backgroundColor: 'rgba(75, 192, 192, 0.6)',
+                    borderColor: 'rgba(75, 192, 192, 1)',
+                    borderWidth: 1,
+                    type: 'line',
+                    fill: false
+                }
+            ]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    title: {
+                        display: true,
+                        text: 'Amount (R)'
+                    }
+                },
+                x: {
+                    title: {
+                        display: true,
+                        text: 'Categories'
+                    }
+                }
+            },
+            plugins: {
+                tooltip: {
+                    callbacks: {
+                        label: function(context) {
+                            return `${context.dataset.label}: R ${context.raw.toFixed(2)}`;
+                        }
+                    }
+                }
+            }
+        }
+    });
+});
+</script>
+
+<style>
+.card {
+    transition: transform 0.2s ease-in-out;
+}
+.card:hover {
+    transform: translateY(-2px);
+}
+.badge {
+    font-size: 0.75rem;
+}
+.table td {
+    vertical-align: middle;
+}
+</style>
 {% endblock %}

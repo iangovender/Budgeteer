@@ -1,30 +1,41 @@
 from flask_wtf import FlaskForm
-from wtforms import StringField, PasswordField, EmailField, FloatField, DateField, TextAreaField
-from wtforms.validators import DataRequired, Email, Length, NumberRange
+from wtforms import StringField, PasswordField, FloatField, DateField, SubmitField
+from wtforms.validators import DataRequired, Length, NumberRange, EqualTo, ValidationError
+from datetime import date
+import re
+
+class EmailValidator:
+    def __init__(self, message=None):
+        if not message:
+            message = 'Please enter a valid email address.'
+        self.message = message
+
+    def __call__(self, form, field):
+        email = field.data
+        if email:
+            # Simple email regex pattern
+            pattern = r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
+            if not re.match(pattern, email):
+                raise ValidationError(self.message)
 
 class LoginForm(FlaskForm):
     email_username = StringField('Email or Username', validators=[DataRequired()])
     password = PasswordField('Password', validators=[DataRequired()])
+    submit = SubmitField('Sign In')
 
 class SignupForm(FlaskForm):
     username = StringField('Username', validators=[DataRequired(), Length(min=3, max=50)])
-    email = EmailField('Email', validators=[DataRequired(), Email()])
+    email = StringField('Email', validators=[DataRequired(), EmailValidator()])
     password = PasswordField('Password', validators=[DataRequired(), Length(min=6)])
-    monthly_income = FloatField('Monthly Income (R)', validators=[NumberRange(min=0)])
+    confirm_password = PasswordField('Confirm Password', validators=[DataRequired(), EqualTo('password')])
+    submit = SubmitField('Create Account')
 
 class ExpenseForm(FlaskForm):
-    date = DateField('Date', validators=[DataRequired()])
+    date = DateField('Date', validators=[DataRequired()], default=date.today)
     amount = FloatField('Amount (R)', validators=[DataRequired(), NumberRange(min=0.01)])
     description = StringField('Description', validators=[DataRequired(), Length(max=200)])
-
-class BudgetForm(FlaskForm):
-    food_limit = FloatField('Food', validators=[NumberRange(min=0)], default=0)
-    transport_limit = FloatField('Transport', validators=[NumberRange(min=0)], default=0)
-    entertainment_limit = FloatField('Entertainment', validators=[NumberRange(min=0)], default=0)
-    groceries_limit = FloatField('Groceries', validators=[NumberRange(min=0)], default=0)
-    bills_limit = FloatField('Bills', validators=[NumberRange(min=0)], default=0)
-    shopping_limit = FloatField('Shopping', validators=[NumberRange(min=0)], default=0)
-    other_limit = FloatField('Other', validators=[NumberRange(min=0)], default=0)
+    submit = SubmitField('Add Expense')
 
 class IncomeForm(FlaskForm):
-    monthly_income = FloatField('Monthly Income (R)', validators=[NumberRange(min=0)])
+    monthly_income = FloatField('Monthly Income (R)', validators=[DataRequired(), NumberRange(min=0)])
+    submit = SubmitField('Update Income')

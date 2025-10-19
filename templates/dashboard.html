@@ -8,6 +8,8 @@
     .border-negative { border-left-color: #ef4444 !important; }
     .text-positive { color: #22c55e !important; }
     .text-negative { color: #ef4444 !important; }
+    .insight-popup { cursor: pointer; transition: all 0.3s ease; }
+    .insight-popup:hover { background-color: #f8f9fa; border-radius: 5px; padding: 5px; }
 </style>
 {% endblock %}
 
@@ -86,8 +88,8 @@
 </div>
 
 <div class="row">
-    <!-- Chart Section - Extended to be inline with category budgets -->
-    <div class="col-lg-8 mb-4">
+    <!-- Chart Section -->
+    <div class="col-lg-7 mb-4">
         <div class="card h-100">
             <div class="card-body">
                 <h5 class="card-title mb-4">Spending by Category</h5>
@@ -106,8 +108,9 @@
         </div>
     </div>
 
-    <!-- Right Sidebar - Quick Actions and Budget Cards -->
-    <div class="col-lg-4 mb-4">
+    <!-- Right Sidebar - Quick Actions, Insights, and Budget Cards -->
+    <div class="col-lg-5 mb-4">
+        <!-- Quick Actions -->
         <div class="card">
             <div class="card-body">
                 <h5 class="card-title mb-3">Quick Actions</h5>
@@ -118,7 +121,7 @@
                     <a href="{{ url_for('budget_settings') }}" class="btn btn-outline-primary">
                         <i class="fas fa-cog me-2"></i>Budget Settings
                     </a>
-                     <a href="{{ url_for('budget_forecast') }}" class="btn btn-outline-primary">
+                    <a href="{{ url_for('budget_forecast') }}" class="btn btn-outline-primary">
                         <i class="fas fa-chart-line me-2"></i>View Budget & Forecast
                     </a>
                     <a href="{{ url_for('profile') }}" class="btn btn-outline-primary">
@@ -127,6 +130,56 @@
                 </div>
             </div>
         </div>
+
+        <!-- Monthly Management -->
+        <div class="card mt-4">
+            <div class="card-body">
+                <h5 class="card-title mb-3">Monthly Management</h5>
+                <div class="d-grid gap-2">
+                    <button type="button" class="btn btn-outline-warning" data-bs-toggle="modal" data-bs-target="#resetModal">
+                        <i class="fas fa-sync-alt me-2"></i>Reset Monthly Budgets
+                    </button>
+                    <small class="text-muted text-center">Start fresh for {{ current_month }}</small>
+                </div>
+                
+                <!-- Reset Status Indicator -->
+                <div id="resetStatus" class="mt-3 p-2 border rounded bg-light">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <small class="text-muted">Monthly Status:</small>
+                        <span id="statusBadge" class="badge bg-success">Active</span>
+                    </div>
+                    <small id="statusText" class="text-muted d-block mt-1">Tracking expenses for current month</small>
+                </div>
+            </div>
+        </div>
+
+        <!-- AI Insights -->
+        {% if insights %}
+        <div class="card mt-4">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <h5 class="card-title mb-0">AI Insights <i class="fas fa-robot text-primary"></i></h5>
+                    <button type="button" class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#insightsModal">
+                        View Details
+                    </button>
+                </div>
+                <div class="insight-popup" data-bs-toggle="modal" data-bs-target="#insightsModal">
+                    <p class="mb-2"><strong>Trend Analysis:</strong></p>
+                    <p class="text-muted small">{{ insights.trends }}</p>
+                    
+                    <p class="mb-2 mt-3"><strong>Top Categories:</strong></p>
+                    <div class="mb-3">
+                        {% for cat, amt in insights.top_categories.items() %}
+                        <span class="badge bg-primary me-1 mb-1">{{ cat }}: R {{ amt | round(2) }}</span>
+                        {% endfor %}
+                    </div>
+                    
+                    <p class="mb-2"><strong>Smart Tip:</strong></p>
+                    <p class="text-muted small">{{ insights.tips }}</p>
+                </div>
+            </div>
+        </div>
+        {% endif %}
 
         <!-- Budget Health -->
         <div class="card mt-4">
@@ -231,6 +284,50 @@
         </div>
     </div>
 </div>
+
+<!-- Insights Modal -->
+{% if insights %}
+<div class="modal fade" id="insightsModal">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Detailed Financial Insights <i class="fas fa-robot text-primary ms-2"></i></h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <h6>Trend Analysis</h6>
+                        <p class="text-muted">{{ insights.trends }}</p>
+                        
+                        <h6 class="mt-4">Smart Recommendations</h6>
+                        <p class="text-muted">{{ insights.tips }}</p>
+                    </div>
+                    <div class="col-md-6">
+                        <h6>Category Breakdown</h6>
+                        <ul class="list-group">
+                            {% for cat, amt in insights.top_categories.items() %}
+                            <li class="list-group-item d-flex justify-content-between align-items-center">
+                                {{ cat }}
+                                <div>
+                                    <span class="badge bg-primary rounded-pill me-2">R {{ amt | round(2) }}</span>
+                                    <small class="text-muted">
+                                        {{ (amt / total_spending * 100) | round(1) if total_spending > 0 else 0 }}%
+                                    </small>
+                                </div>
+                            </li>
+                            {% endfor %}
+                        </ul>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-primary" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
 {% endblock %}
 
 {% block extra_js %}
@@ -286,4 +383,3 @@ document.addEventListener('DOMContentLoaded', function() {
 </script>
 {% endif %}
 {% endblock %}
-[file content end]
