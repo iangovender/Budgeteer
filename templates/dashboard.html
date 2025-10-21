@@ -10,6 +10,89 @@
     .text-negative { color: #ef4444 !important; }
     .insight-popup { cursor: pointer; transition: all 0.3s ease; }
     .insight-popup:hover { background-color: #f8f9fa; border-radius: 5px; padding: 5px; }
+    .chart-container {
+        position: relative;
+        height: 300px;
+        width: 100%;
+    }
+    
+    /* Enhanced layout for better use of space */
+    .dashboard-card {
+        min-height: 120px;
+    }
+    
+    /* Fix for tables - ensure proper width and spacing */
+    .table-responsive table {
+        width: 100%;
+        min-width: 100%;
+    }
+    
+    /* Remove text wrapping restrictions and ensure proper spacing */
+    .table td, .table th {
+        white-space: nowrap;
+        padding: 0.75rem 0.5rem;
+        vertical-align: middle;
+    }
+    
+    /* Specific column widths for Recent Expenses table */
+    .recent-expenses-table th:nth-child(1),
+    .recent-expenses-table td:nth-child(1) {
+        min-width: 100px;
+    }
+    
+    .recent-expenses-table th:nth-child(2),
+    .recent-expenses-table td:nth-child(2) {
+        min-width: 80px;
+    }
+    
+    .recent-expenses-table th:nth-child(3),
+    .recent-expenses-table td:nth-child(3) {
+        min-width: 150px;
+    }
+    
+    .recent-expenses-table th:nth-child(4),
+    .recent-expenses-table td:nth-child(4) {
+        min-width: 100px;
+    }
+    
+    /* Ensure equal height cards */
+    .row-equal-height {
+        display: flex;
+        flex-wrap: wrap;
+    }
+    
+    .row-equal-height > [class*='col-'] {
+        display: flex;
+    }
+    
+    .row-equal-height .card {
+        width: 100%;
+        display: flex;
+        flex-direction: column;
+    }
+    
+    .row-equal-height .card-body {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+    }
+    
+    /* Make table containers grow to fill space */
+    .table-responsive {
+        flex: 1;
+        overflow-x: auto;
+    }
+    
+    /* Right column cards full height */
+    .right-column-cards .card {
+        height: 100%;
+        display: flex;
+        flex-direction: column;
+    }
+    
+    .right-column-cards .card-body {
+        flex: 1;
+    }
 </style>
 {% endblock %}
 
@@ -24,7 +107,7 @@
 <!-- Overview Cards -->
 <div class="row mb-4">
     <div class="col-md-3 mb-3">
-        <div class="card dashboard-card h-100" style="border-left-color: #42a5f5;">
+        <div class="card dashboard-card h-100" style="border-left: 4px solid #42a5f5;">
             <div class="card-body">
                 <div class="d-flex justify-content-between align-items-center">
                     <div>
@@ -39,7 +122,7 @@
         </div>
     </div>
     <div class="col-md-3 mb-3">
-        <div class="card dashboard-card h-100 {% if remaining_budget and remaining_budget < 0 %}border-negative{% else %}border-positive{% endif %}">
+        <div class="card dashboard-card h-100" style="border-left: 4px solid '{% if remaining_budget and remaining_budget < 0 %}#ef4444{% else %}#22c55e{% endif %};'">
             <div class="card-body">
                 <div class="d-flex justify-content-between align-items-center">
                     <div>
@@ -56,7 +139,7 @@
         </div>
     </div>
     <div class="col-md-3 mb-3">
-        <div class="card dashboard-card h-100" style="border-left-color: #3b82f6;">
+        <div class="card dashboard-card h-100" style="border-left: 4px solid #3b82f6;">
             <div class="card-body">
                 <div class="d-flex justify-content-between align-items-center">
                     <div>
@@ -71,7 +154,7 @@
         </div>
     </div>
     <div class="col-md-3 mb-3">
-        <div class="card dashboard-card h-100" style="border-left-color: #f59e0b;">
+        <div class="card dashboard-card h-100" style="border-left: 4px solid #f59e0b;">
             <div class="card-body">
                 <div class="d-flex justify-content-between align-items-center">
                     <div>
@@ -88,17 +171,18 @@
 </div>
 
 <div class="row">
-    <!-- Chart Section -->
-    <div class="col-lg-7 mb-4">
-        <div class="card h-100">
+    <!-- Left Column - Chart and Recent Expenses + Category Budgets -->
+    <div class="col-lg-8 mb-4">
+        <!-- Chart Section -->
+        <div class="card mb-4">
             <div class="card-body">
-                <h5 class="card-title mb-4">Spending by Category</h5>
+                <h5 class="card-title mb-3">Spending by Category</h5>
                 {% if chart_data %}
-                    <div class="chart-container" style="position: relative; height: 400px; width: 100%;">
+                    <div class="chart-container">
                         <canvas id="categoryChart"></canvas>
                     </div>
                 {% else %}
-                    <div class="text-center py-5">
+                    <div class="text-center py-4">
                         <i class="fas fa-chart-pie fa-3x text-muted mb-3"></i>
                         <p class="text-muted">No expense data available for chart.</p>
                         <a href="{{ url_for('expense_entry') }}" class="btn btn-primary">Add Your First Expense</a>
@@ -106,12 +190,91 @@
                 {% endif %}
             </div>
         </div>
+
+        <!-- Recent Expenses and Category Budgets - Side by Side with Equal Height -->
+        <div class="row row-equal-height">
+            <!-- Recent Expenses -->
+            <div class="col-lg-6 mb-4">
+                <div class="card">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between align-items-center mb-3">
+                            <h5 class="card-title mb-0">Recent Expenses</h5>
+                            <a href="{{ url_for('expense_entry') }}" class="btn btn-sm btn-primary">View All</a>
+                        </div>
+                        {% if recent_expenses %}
+                        <div class="table-responsive">
+                            <table class="table table-hover recent-expenses-table">
+                                <thead>
+                                    <tr>
+                                        <th>Date</th>
+                                        <th>Amount</th>
+                                        <th>Description</th>
+                                        <th>Category</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for expense in recent_expenses %}
+                                    <tr>
+                                        <td>{{ expense.date.strftime('%Y-%m-%d') }}</td>
+                                        <td class="fw-bold">R {{ expense.amount }}</td>
+                                        <td>{{ expense.description }}</td>
+                                        <td>
+                                            <span class="badge bg-primary">{{ expense.category }}</span>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                        {% else %}
+                        <div class="text-center py-4">
+                            <i class="fas fa-receipt fa-3x text-muted mb-3"></i>
+                            <p class="text-muted">No expenses recorded yet.</p>
+                            <a href="{{ url_for('expense_entry') }}" class="btn btn-primary">Add Your First Expense</a>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+
+            <!-- Category Budgets -->
+            {% if category_budgets %}
+            <div class="col-lg-6 mb-4">
+                <div class="card">
+                    <div class="card-body">
+                        <h5 class="card-title mb-3">Category Budgets</h5>
+                        <div style="overflow-y: auto;">
+                            {% for category, data in category_budgets.items() %}
+                                {% if data.limit > 0 %}
+                                    {% set progress_percentage = (data.spending / data.limit * 100) | round(1) if data.limit > 0 else 0 %}
+                                    {% set display_progress = progress_percentage if progress_percentage <= 100 else 100 %}
+                                    <style>
+                                        #category-progress-{{ loop.index }} { width: {{ display_progress }}%; }
+                                    </style>
+                                    <div class="mb-3">
+                                        <div class="d-flex justify-content-between mb-1">
+                                            <small class="fw-bold">{{ category }}</small>
+                                            <small>R {{ data.spending | round(2) }} / R {{ data.limit | round(2) }}</small>
+                                        </div>
+                                        <div class="progress" style="height: 10px; border-radius: 5px;">
+                                            <div id="category-progress-{{ loop.index }}" class="progress-bar {% if progress_percentage > 100 %}bg-danger{% elif progress_percentage > 80 %}bg-warning{% else %}bg-success{% endif %}">
+                                            </div>
+                                        </div>
+                                    </div>
+                                {% endif %}
+                            {% endfor %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+        </div>
     </div>
 
-    <!-- Right Sidebar - Quick Actions, Insights, and Budget Cards -->
-    <div class="col-lg-5 mb-4">
+    <!-- Right Column - Quick Actions, Monthly Management, Insights, Budget Health -->
+    <div class="col-lg-4 mb-4 right-column-cards">
         <!-- Quick Actions -->
-        <div class="card">
+        <div class="card mb-3">
             <div class="card-body">
                 <h5 class="card-title mb-3">Quick Actions</h5>
                 <div class="d-grid gap-2">
@@ -122,7 +285,7 @@
                         <i class="fas fa-cog me-2"></i>Budget Settings
                     </a>
                     <a href="{{ url_for('budget_forecast') }}" class="btn btn-outline-primary">
-                        <i class="fas fa-chart-line me-2"></i>View Budget & Forecast
+                        <i class="fas fa-chart-line me-2"></i>Budget Forecast
                     </a>
                     <a href="{{ url_for('profile') }}" class="btn btn-outline-primary">
                         <i class="fas fa-user me-2"></i>Update Profile
@@ -132,7 +295,7 @@
         </div>
 
         <!-- Monthly Management -->
-        <div class="card mt-4">
+        <div class="card mb-3">
             <div class="card-body">
                 <h5 class="card-title mb-3">Monthly Management</h5>
                 <div class="d-grid gap-2">
@@ -155,34 +318,31 @@
 
         <!-- AI Insights -->
         {% if insights %}
-        <div class="card mt-4">
+        <div class="card mb-3">
             <div class="card-body">
-                <div class="d-flex justify-content-between align-items-center mb-3">
+                <div class="d-flex justify-content-between align-items-center mb-2">
                     <h5 class="card-title mb-0">AI Insights <i class="fas fa-robot text-primary"></i></h5>
                     <button type="button" class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#insightsModal">
-                        View Details
+                        Details
                     </button>
                 </div>
                 <div class="insight-popup" data-bs-toggle="modal" data-bs-target="#insightsModal">
-                    <p class="mb-2"><strong>Trend Analysis:</strong></p>
+                    <p class="mb-1"><strong>Trend:</strong></p>
                     <p class="text-muted small">{{ insights.trends }}</p>
                     
-                    <p class="mb-2 mt-3"><strong>Top Categories:</strong></p>
-                    <div class="mb-3">
+                    <p class="mb-1 mt-2"><strong>Top Categories:</strong></p>
+                    <div class="mb-2">
                         {% for cat, amt in insights.top_categories.items() %}
-                        <span class="badge bg-primary me-1 mb-1">{{ cat }}: R {{ amt | round(2) }}</span>
+                        <span class="badge bg-primary me-1 mb-1" style="font-size: 0.75rem;">{{ cat }}: R {{ amt | round(2) }}</span>
                         {% endfor %}
                     </div>
-                    
-                    <p class="mb-2"><strong>Smart Tip:</strong></p>
-                    <p class="text-muted small">{{ insights.tips }}</p>
                 </div>
             </div>
         </div>
         {% endif %}
 
         <!-- Budget Health -->
-        <div class="card mt-4">
+        <div class="card mb-3">
             <div class="card-body">
                 <h5 class="card-title mb-3">Budget Health</h5>
                 {% if monthly_income and monthly_income > 0 %}
@@ -191,7 +351,7 @@
                     <style>
                         #budget-progress-bar { width: {{ display_usage }}%; }
                     </style>
-                    <div class="progress mb-3" style="height: 25px; border-radius: 8px;">
+                    <div class="progress mb-2" style="height: 25px; border-radius: 8px;">
                         <div id="budget-progress-bar" class="progress-bar {% if budget_usage > 90 %}bg-danger{% elif budget_usage > 75 %}bg-warning{% else %}bg-success{% endif %}" 
                              style="font-weight: 600;">
                             {{ budget_usage }}%
@@ -201,84 +361,10 @@
                         You've used {{ budget_usage }}% of your monthly income
                     </p>
                 {% else %}
-                    <div class="alert alert-warning">
+                    <div class="alert alert-warning mb-0">
                         <i class="fas fa-exclamation-triangle me-2"></i>
-                        Please set up your monthly income in your profile to track budget health.
+                        Set your monthly income in your profile.
                     </div>
-                {% endif %}
-            </div>
-        </div>
-
-        <!-- Category Budget Progress -->
-        {% if category_budgets %}
-        <div class="card mt-4">
-            <div class="card-body">
-                <h5 class="card-title mb-3">Category Budgets</h5>
-                {% for category, data in category_budgets.items() %}
-                    {% if data.limit > 0 %}
-                        {% set progress_percentage = (data.spending / data.limit * 100) | round(1) if data.limit > 0 else 0 %}
-                        {% set display_progress = progress_percentage if progress_percentage <= 100 else 100 %}
-                        <style>
-                            #category-progress-{{ loop.index }} { width: {{ display_progress }}%; }
-                        </style>
-                        <div class="mb-3">
-                            <div class="d-flex justify-content-between mb-1">
-                                <small class="fw-bold">{{ category }}</small>
-                                <small>R {{ data.spending | round(2) }} / R {{ data.limit | round(2) }}</small>
-                            </div>
-                            <div class="progress" style="height: 10px; border-radius: 5px;">
-                                <div id="category-progress-{{ loop.index }}" class="progress-bar {% if progress_percentage > 100 %}bg-danger{% elif progress_percentage > 80 %}bg-warning{% else %}bg-success{% endif %}">
-                                </div>
-                            </div>
-                        </div>
-                    {% endif %}
-                {% endfor %}
-            </div>
-        </div>
-        {% endif %}
-    </div>
-</div>
-
-<!-- Recent Expenses -->
-<div class="row mt-4">
-    <div class="col-12">
-        <div class="card">
-            <div class="card-body">
-                <div class="d-flex justify-content-between align-items-center mb-3">
-                    <h5 class="card-title mb-0">Recent Expenses</h5>
-                    <a href="{{ url_for('expense_entry') }}" class="btn btn-sm btn-primary">View All</a>
-                </div>
-                {% if recent_expenses %}
-                <div class="table-responsive">
-                    <table class="table table-hover">
-                        <thead>
-                            <tr>
-                                <th>Date</th>
-                                <th>Amount</th>
-                                <th>Description</th>
-                                <th>Category</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {% for expense in recent_expenses %}
-                            <tr>
-                                <td>{{ expense.date.strftime('%Y-%m-%d') }}</td>
-                                <td class="fw-bold">R {{ expense.amount }}</td>
-                                <td>{{ expense.description }}</td>
-                                <td>
-                                    <span class="badge bg-primary">{{ expense.category }}</span>
-                                </td>
-                            </tr>
-                            {% endfor %}
-                        </tbody>
-                    </table>
-                </div>
-                {% else %}
-                <div class="text-center py-4">
-                    <i class="fas fa-receipt fa-3x text-muted mb-3"></i>
-                    <p class="text-muted">No expenses recorded yet.</p>
-                    <a href="{{ url_for('expense_entry') }}" class="btn btn-primary">Add Your First Expense</a>
-                </div>
                 {% endif %}
             </div>
         </div>
@@ -353,11 +439,14 @@ document.addEventListener('DOMContentLoaded', function() {
             maintainAspectRatio: false,
             plugins: {
                 legend: {
-                    position: 'right',
+                    position: 'bottom',
                     labels: {
-                        padding: 20,
+                        padding: 15,
                         usePointStyle: true,
-                        pointStyle: 'circle'
+                        pointStyle: 'circle',
+                        font: {
+                            size: 11
+                        }
                     }
                 },
                 tooltip: {
@@ -372,7 +461,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     }
                 }
             },
-            cutout: '50%',
+            cutout: '60%',
             animation: {
                 animateScale: true,
                 animateRotate: true

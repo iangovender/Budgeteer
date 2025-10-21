@@ -20,13 +20,16 @@ app.config['WTF_CSRF_ENABLED'] = True
 db = SQLAlchemy(app)
 migrate = Migrate(app, db)
 
-CATEGORIES = ['Food', 'Transport', 'Entertainment', 'Groceries', 'Bills', 'Shopping', 'Other']
-# Define category priorities (lower number = higher priority)
+CATEGORIES = ['Food', 'Transport', 'Entertainment', 'Groceries', 'Bills', 'Shopping', 'Restaurants', 'Gas & Fuel', 'Other']
+
+# Update CATEGORY_PRIORITIES
 CATEGORY_PRIORITIES = {
     'Bills': 1,      # Highest priority - essential
     'Groceries': 2,  # Essential living expenses
     'Transport': 3,  # Essential for work/life
+    'Gas & Fuel': 3, # Same priority as transport
     'Food': 4,       # Eating out - moderate priority
+    'Restaurants': 4, # Same priority as food
     'Shopping': 5,   # Discretionary spending
     'Entertainment': 6,  # Leisure - lower priority
     'Other': 7       # Miscellaneous - lowest priority

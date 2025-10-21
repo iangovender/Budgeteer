@@ -13,13 +13,38 @@
             --primary: #4361ee; --secondary: #3a0ca3; --success: #4ade80;
             --warning: #f59e0b; --danger: #ef4444; --light-bg: #f8f9fa;
         }
-        body { background-color: var(--light-bg); font-family: 'Segoe UI', sans-serif; }
+        html, body {
+            height: 100%;
+            margin: 0;
+        }
+        body { 
+            background-color: var(--light-bg); 
+            font-family: 'Segoe UI', sans-serif;
+            display: flex;
+            flex-direction: column;
+        }
         .navbar { background: linear-gradient(135deg, var(--primary), var(--secondary)); }
         .navbar-brand { color: white !important; font-weight: bold; }
         .card { border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
         .btn-primary { background: var(--primary); border-color: var(--primary); }
         .alert { border-radius: 8px; border: none; }
         .toast-container { position: fixed; top: 20px; right: 20px; z-index: 1055; }
+        .nav-link.btn { background: none; border: none; color: rgba(255,255,255,.75) !important; padding: 0.5rem 1rem; }
+        .nav-link.btn:hover { color: white !important; background: rgba(255,255,255,.1); }
+        
+        /* Footer Styles */
+        .main-content {
+            flex: 1 0 auto;
+        }
+        footer {
+            flex-shrink: 0;
+            margin-top: auto;
+        }
+        footer .footer-content {
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            color: white;
+            padding: 1rem 0;
+        }
     </style>
 </head>
 <body>
@@ -40,7 +65,7 @@
                     <a class="nav-link" href="{{ url_for('expense_entry') }}">Add Expense</a>
                     <a class="nav-link" href="{{ url_for('profile') }}">Profile</a>
                     <form method="POST" action="{{ url_for('logout') }}" class="d-inline">
-                        <button class="nav-link btn btn-link p-0">Logout</button>
+                        <button class="nav-link btn btn-link">Logout</button>
                     </form>
                 {% else %}
                     <a class="nav-link" href="{{ url_for('login') }}">Login</a>
@@ -50,7 +75,7 @@
         </div>
     </nav>
 
-    <div class="container mt-4">
+    <div class="container mt-4 main-content">
         <!-- Flash Messages (converted to toasts by JS) -->
         {% with messages = get_flashed_messages(with_categories=true) %}
             {% if messages %}
@@ -99,6 +124,12 @@
             </div>
         </div>
     </div>
+
+    <footer>
+        <div class="footer-content text-center">
+            <p class="mb-0">&copy; 2025 Budgeteer</p>
+        </div>
+    </footer>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script>
