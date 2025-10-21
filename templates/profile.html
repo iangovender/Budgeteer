@@ -1,0 +1,107 @@
+{% extends "base.html" %}
+
+{% block title %}Profile - Budgeteer{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-header">
+                <h4 class="card-title mb-0">User Profile</h4>
+            </div>
+            <div class="card-body">
+                <div class="row mb-4">
+                    <div class="col-md-6">
+                        <h6>Account Information</h6>
+                        <p><strong>Username:</strong> {{ user.username }}</p>
+                        <p><strong>Email:</strong> {{ user.email }}</p>
+                        <p><strong>Member since:</strong> {{ user.created_at.strftime('%B %d, %Y') }}</p>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="text-center">
+                            <div class="profile-icon mb-3">
+                                <i class="fa fa-user-circle fa-5x text-primary"></i>
+                            </div>
+                            <h5>{{ user.username }}</h5>
+                        </div>
+                    </div>
+                </div>
+
+                <hr>
+
+                <h5 class="mb-3">Monthly Income Setup</h5>
+                {% if not user.monthly_income or user.monthly_income == 0 %}
+                    <div class="alert alert-warning">
+                        <i class="fa fa-exclamation-triangle me-2"></i>
+                        Please set up your monthly income to enable budget tracking features.
+                    </div>
+                {% endif %}
+                
+                <form method="POST" action="{{ url_for('profile') }}">
+                    {{ form.hidden_tag() }}
+                    <div class="mb-3">
+                        <label for="monthly_income" class="form-label">Monthly Income (R)</label>
+                        {{ form.monthly_income(class="form-control", value=user.monthly_income if user.monthly_income else '') }}
+                        {% if form.monthly_income.errors %}
+                            <div class="text-danger">
+                                {% for error in form.monthly_income.errors %}
+                                    <small>{{ error }}</small>
+                                {% endfor %}
+                            </div>
+                        {% endif %}
+                        <div class="form-text">
+                            This helps calculate your remaining budget and track spending against your income.
+                        </div>
+                    </div>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-save me-2"></i>Update Income
+                    </button>
+                </form>
+
+                {% if user.monthly_income and user.monthly_income > 0 %}
+                <div class="mt-4 p-3 bg-light rounded">
+                    <h6>Budget Summary</h6>
+                    <p class="mb-1"><strong>Monthly Income:</strong> R {{ user.monthly_income | round(2) }}</p>
+                    <p class="mb-0"><small class="text-muted">Visit the dashboard to see detailed budget analysis.</small></p>
+                </div>
+                {% endif %}
+
+                <hr>
+
+                <!-- Monthly Budget Reset -->
+                <div class="mt-4">
+                    <h5 class="mb-3">Monthly Budget Reset</h5>
+                    <p class="text-muted small mb-3">
+                        Reset your budget tracking at the start of each month to start fresh while keeping your budget limits.
+                    </p>
+                    <button type="button" class="btn btn-outline-warning w-100" data-bs-toggle="modal" data-bs-target="#resetModal">
+                        <i class="fas fa-sync-alt me-2"></i>Reset Monthly Budgets
+                    </button>
+                    <div class="mt-2 text-center">
+                        <small class="text-muted">Current: {{ current_month }}</small>
+                    </div>
+                </div>
+
+                <hr>
+
+                <div class="mt-4">
+                    <h5 class="mb-3">Account Management</h5>
+                    <div class="alert alert-info">
+                        <i class="fa fa-info-circle me-2"></i>
+                        To update your username, email, or password, please contact support or create a new account.
+                    </div>
+                    
+                    <div class="d-grid gap-2">
+                        <a href="{{ url_for('budget_settings') }}" class="btn btn-outline-primary">
+                            <i class="fas fa-cog me-2"></i>Manage Budget Settings
+                        </a>
+                        <a href="{{ url_for('dashboard') }}" class="btn btn-outline-secondary">
+                            <i class="fas fa-chart-pie me-2"></i>View Dashboard
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

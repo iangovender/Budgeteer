@@ -13,6 +13,7 @@ venv.bak/
 # Database
 *.db
 *.sqlite3
+instance/
 
 # IDE
 .vscode/
@@ -30,3 +31,5 @@ Thumbs.db
 
 # Matplotlib cache
 .matplotlib/
+
+/my_distilbert_model/

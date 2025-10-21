@@ -1,98 +1,389 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Budget Settings</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/bootstrap.min.css') }}">
-    <style>
-        .progress-bar-custom {
-            transition: width 0.6s ease;
-        }
-    </style>
-</head>
-<body>
-    <nav class="navbar navbar-expand-lg navbar-light bg-light">
-        <div class="container-fluid">
-            <a class="navbar-brand" href="{{ url_for('dashboard') }}">Expense Tracker</a>
-            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
-                <span class="navbar-toggler-icon"></span>
-            </button>
-            <div class="collapse navbar-collapse" id="navbarNav">
-                <ul class="navbar-nav me-auto">
-                    <li class="nav-item"><a class="nav-link" href="{{ url_for('dashboard') }}">Dashboard</a></li>
-                    <li class="nav-item"><a class="nav-link" href="{{ url_for('expense_entry') }}">Add Expense</a></li>
-                    <li class="nav-item"><a class="nav-link active" href="{{ url_for('budget_settings') }}">Budget Settings</a></li>
-                </ul>
-                <form method="POST" action="{{ url_for('logout') }}">
-                    <button type="submit" class="btn btn-outline-danger">Logout</button>
-                </form>
+{% extends "base.html" %}
+
+{% block title %}Budget Settings - Budgeteer{% endblock %}
+
+{% block content %}
+<div class="row mb-3">
+    <div class="col-12">
+        <div class="d-flex justify-content-between align-items-center">
+            <h2>Budget Settings</h2>
+            <div>
+                <button type="button" class="btn btn-info me-2" data-bs-toggle="modal" data-bs-target="#recommendationsModal">
+                    <i class="fas fa-magic me-2"></i>Smart Suggest
+                </button>
+                <button type="submit" form="budgetForm" class="btn btn-primary">
+                    <i class="fas fa-save me-2"></i>Save Changes
+                </button>
             </div>
         </div>
-    </nav>
-    <div class="container mt-4">
-        <h2>Budget Settings</h2>
-        {% with messages = get_flashed_messages() %}
-            {% if messages %}
-                <div class="alert alert-success mt-3">
-                    {{ messages[0] }}
-                </div>
-            {% endif %}
-        {% endwith %}
-        <form method="POST" action="{{ url_for('update_budgets') }}">
-            <table class="table">
-                <thead>
-                    <tr>
-                        <th>Category</th>
-                        <th>Monthly Limit (R)</th>
-                        <th>Current Spending (R)</th>
-                        <th>Progress</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for category in categories %}
-                    {% set budget_limit = budgets.get(category, 0) %}
-                    {% set spending = current_spending.get(category, 0) %}
-                    {% set progress_percentage = (spending / budget_limit * 100) if budget_limit and budget_limit > 0 else 0 %}
-                    {% set progress_percentage = progress_percentage|round(2) %}
-                    <tr>
-                        <td>{{ category }}</td>
-                        <td>
-                            <input type="number" step="0.01" min="0" name="limit_{{ category }}" value="{{ budget_limit }}" class="form-control">
-                        </td>
-                        <td>{{ spending }}</td>
-                        <td>
-                            <div class="progress">
-                                <div class="progress-bar-custom progress-bar
-                                    {% if budget_limit and spending > budget_limit %}bg-danger
-                                    {% elif progress_percentage > 80 %}bg-warning
-                                    {% else %}bg-success{% endif %}" 
-                                     data-width="{{ progress_percentage }}">
-                                    {{ "%.1f"|format(progress_percentage) }}%
-                                </div>
-                            </div>
-                        </td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
-            <button type="submit" class="btn btn-primary">Save Budgets</button>
-        </form>
-        {% if over_budget %}
-            <div class="alert alert-warning mt-3">Some categories are over budget!</div>
-        {% endif %}
+        <p class="text-muted mt-2">Set your monthly budget limits and track your spending progress</p>
     </div>
-    <script src="{{ url_for('static', filename='js/bootstrap.bundle.min.js') }}"></script>
-    <script>
-        // Set progress bar widths after page load
-        document.addEventListener('DOMContentLoaded', function() {
-            const progressBars = document.querySelectorAll('.progress-bar-custom');
-            progressBars.forEach(bar => {
-                const width = parseFloat(bar.getAttribute('data-width'));
-                const finalWidth = Math.min(width, 100); // Cap at 100%
-                bar.style.width = finalWidth + '%';
+</div>
+
+<!-- Smart Redistribution Card -->
+{% if over_budget and monthly_income and monthly_income > 0 and redistribution_suggestions %}
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card border-warning">
+            <div class="card-header bg-warning text-dark">
+                <h5 class="mb-0">
+                    <i class="fas fa-lightbulb me-2"></i>Smart Budget Redistribution Available
+                </h5>
+            </div>
+            <div class="card-body">
+                <p class="mb-3">Some categories are over budget! We can automatically redistribute your budget to better match your spending patterns.</p>
+                
+                <div class="table-responsive mb-3">
+                    <table class="table table-sm">
+                        <thead>
+                            <tr>
+                                <th>Category</th>
+                                <th>Current Limit</th>
+                                <th>Suggested Limit</th>
+                                <th>Change</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for category in categories %}
+                            {% set current_limit = budgets.get(category, 0) %}
+                            {% set suggested_limit = redistribution_suggestions.get(category, 0) %}
+                            {% if suggested_limit != current_limit %}
+                            <tr>
+                                <td class="fw-bold">{{ category }}</td>
+                                <td>R {{ "%.2f"|format(current_limit) }}</td>
+                                <td class="fw-bold text-success">R {{ "%.2f"|format(suggested_limit) }}</td>
+                                <td class="{% if suggested_limit > current_limit %}text-success{% else %}text-danger{% endif %}">
+                                    {% set change = suggested_limit - current_limit %}
+                                    {% if change > 0 %}+{% endif %}R {{ "%.2f"|format(change) }}
+                                </td>
+                                <td>
+                                    {% if suggested_limit > current_limit %}
+                                    <span class="badge bg-success">Increase</span>
+                                    {% else %}
+                                    <span class="badge bg-danger">Decrease</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% endif %}
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                
+                <form method="POST" class="d-inline">
+                    <button type="submit" name="smart_redistribute" value="true" class="btn btn-warning">
+                        <i class="fas fa-balance-scale me-2"></i>Apply Smart Redistribution
+                    </button>
+                </form>
+                <small class="text-muted ms-3">This will automatically adjust your budgets based on your actual spending patterns and category priorities.</small>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<div class="row">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-body">
+                <form method="POST" id="budgetForm">
+                    <div class="table-responsive">
+                        <table class="table">
+                            <thead>
+                                <tr>
+                                    <th>Category</th>
+                                    <th>Monthly Limit (R)</th>
+                                    <th>Spent (R)</th>
+                                    <th>Progress</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for category in categories %}
+                                {% set budget_limit = budgets.get(category, 0) %}
+                                {% set spending = current_spending.get(category, 0) %}
+                                {% set progress_percentage = (spending / budget_limit * 100) if budget_limit and budget_limit > 0 else 0 %}
+                                <tr>
+                                    <td class="align-middle fw-bold">
+                                        <i class="fas fa-tag me-2 text-primary"></i>{{ category }}
+                                        {% if category == 'Bills' or category == 'Groceries' %}
+                                        <span class="badge bg-info ms-1" title="High Priority">Essential</span>
+                                        {% elif category == 'Transport' %}
+                                        <span class="badge bg-primary ms-1" title="Medium Priority">Necessary</span>
+                                        {% endif %}
+                                    </td>
+                                    <td class="align-middle">
+                                        <input type="number" step="0.01" min="0" name="limit_{{ category }}" 
+                                               value="{{ "%.2f"|format(budget_limit) if budget_limit else '' }}" class="form-control w-auto d-inline-block" 
+                                               placeholder="Set limit">
+                                    </td>
+                                    <td class="align-middle">
+                                        <span class="fw-bold {% if budget_limit and spending > budget_limit %}text-danger{% endif %}">
+                                            R {{ "%.2f"|format(spending) }}
+                                        </span>
+                                        {% if budget_limit and spending > budget_limit %}
+                                        <br><small class="text-danger">Over by R {{ "%.2f"|format(spending - budget_limit) }}</small>
+                                        {% endif %}
+                                    </td>
+                                    <td class="align-middle">
+                                        <div class="budget-progress">
+                                            <div class="progress-bar-outer">
+                                                <div class="progress-bar-inner 
+                                                    {% if budget_limit and spending > budget_limit %}over-budget
+                                                    {% elif progress_percentage > 80 %}near-limit
+                                                    {% else %}on-track{% endif %}" 
+                                                    data-percentage="{{ progress_percentage }}">
+                                                    {{ "%.1f"|format(progress_percentage) }}%
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </form>
+                
+                {% if over_budget and not redistribution_suggestions %}
+                    <div class="alert alert-warning mt-3">
+                        <i class="fas fa-exclamation-triangle me-2"></i>
+                        Some categories are over budget! Consider adjusting your limits or reducing spending.
+                    </div>
+                {% endif %}
+
+                <!-- Budget Summary -->
+                <div class="row mt-4">
+                    <div class="col-md-6">
+                        <div class="card bg-light">
+                            <div class="card-body">
+                                <h6 class="card-title">Budget Summary</h6>
+                                <p class="mb-1"><strong>Total Budget Allocated:</strong> R {{ "%.2f"|format(budgets.values() | sum) }}</p>
+                                <p class="mb-1"><strong>Total Spent:</strong> R {{ "%.2f"|format(current_spending.values() | sum) }}</p>
+                                <p class="mb-0"><strong>Monthly Income:</strong> R {{ "%.2f"|format(monthly_income) if monthly_income else 0.00 }}</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="card bg-light">
+                            <div class="card-body">
+                                <h6 class="card-title">Category Priorities</h6>
+                                <small class="text-muted">
+                                    <span class="badge bg-info">Essential</span> Bills & Groceries
+                                    <span class="badge bg-primary ms-2">Necessary</span> Transport
+                                    <span class="badge bg-secondary ms-2">Discretionary</span> Others
+                                </small>
+                                <p class="small text-muted mt-2 mb-0">Smart redistribution prioritizes essential categories when adjusting budgets.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Recommendations Modal -->
+<div class="modal fade" id="recommendationsModal">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    <i class="fas fa-magic me-2 text-info"></i>Smart Budget Recommendations
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                {% if recommendations %}
+                <div class="alert alert-info">
+                    <i class="fas fa-lightbulb me-2"></i>
+                    <strong>Smart suggestions based on your spending history</strong>
+                </div>
+                
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th>Category</th>
+                                <th>Recommended Limit</th>
+                                <th>Your Current Limit</th>
+                                <th>Difference</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for category, amount in recommendations.items() %}
+                            {% set current_limit = budgets.get(category, 0) %}
+                            {% set difference = amount - current_limit %}
+                            <tr>
+                                <td class="fw-bold">{{ category }}</td>
+                                <td class="fw-bold text-success">R {{ "%.2f"|format(amount) }}</td>
+                                <td>R {{ "%.2f"|format(current_limit) }}</td>
+                                <td class="{% if difference > 0 %}text-success{% else %}text-danger{% endif %}">
+                                    {% if difference > 0 %}+{% endif %}R {{ "%.2f"|format(difference) }}
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                
+                <div class="mt-3 p-3 bg-light rounded">
+                    <h6><i class="fas fa-info-circle me-2 text-primary"></i>How these recommendations work:</h6>
+                    <p class="small text-muted mb-0">
+                        These suggestions use the 50/30/20 budgeting rule (50% needs, 30% wants, 20% savings/debt) 
+                        adjusted for your actual spending patterns and income level.
+                    </p>
+                </div>
+                {% else %}
+                <div class="text-center py-4">
+                    <i class="fas fa-calculator fa-3x text-muted mb-3"></i>
+                    <h5 class="text-muted">No recommendations available</h5>
+                    <p class="text-muted">
+                        Add some expenses to see smart budget suggestions based on your spending patterns.
+                    </p>
+                </div>
+                {% endif %}
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+                {% if recommendations %}
+                <button type="button" class="btn btn-primary" id="applyRecommendations">
+                    <i class="fas fa-check me-2"></i>Apply to Form
+                </button>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Initialize progress bars
+    const progressBars = document.querySelectorAll('.progress-bar-inner');
+    progressBars.forEach(bar => {
+        const percentage = parseFloat(bar.getAttribute('data-percentage'));
+        const width = Math.min(percentage, 100);
+        bar.style.width = width + '%';
+    });
+
+    // Apply recommendations to form
+    const applyButton = document.getElementById('applyRecommendations');
+    if (applyButton) {
+        applyButton.addEventListener('click', function() {
+            const recommendationRows = document.querySelectorAll('#recommendationsModal tbody tr');
+            recommendationRows.forEach(row => {
+                const category = row.cells[0].textContent.trim();
+                const recommendedAmount = parseFloat(row.cells[1].textContent.replace('R', '').trim());
+                const input = document.querySelector(`input[name="limit_${category}"]`);
+                
+                if (input && !isNaN(recommendedAmount)) {
+                    input.value = recommendedAmount;
+                    input.classList.add('border', 'border-success');
+                    setTimeout(() => {
+                        input.classList.remove('border', 'border-success');
+                    }, 2000);
+                }
             });
+            
+            const modal = bootstrap.Modal.getInstance(document.getElementById('recommendationsModal'));
+            modal.hide();
+            showToast('Budget recommendations applied successfully!', 'success');
         });
-    </script>
-</body>
-</html>
+    }
+
+    function showToast(message, type) {
+        const toastElement = document.createElement('div');
+        toastElement.className = `toast align-items-center text-white bg-${type === 'success' ? 'success' : 'danger'} border-0`;
+        toastElement.innerHTML = `
+            <div class="d-flex">
+                <div class="toast-body">
+                    <i class="fas fa-${type === 'success' ? 'check' : 'exclamation'}-circle me-2"></i>
+                    ${message}
+                </div>
+                <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
+            </div>
+        `;
+        
+        const toastContainer = document.querySelector('.toast-container') || createToastContainer();
+        toastContainer.appendChild(toastElement);
+        
+        const toast = new bootstrap.Toast(toastElement);
+        toast.show();
+        
+        toastElement.addEventListener('hidden.bs.toast', function() {
+            toastElement.remove();
+        });
+    }
+
+    function createToastContainer() {
+        const container = document.createElement('div');
+        container.className = 'toast-container position-fixed top-0 end-0 p-3';
+        container.style.zIndex = '9999';
+        document.body.appendChild(container);
+        return container;
+    }
+});
+</script>
+
+<style>
+.budget-progress {
+    width: 100%;
+}
+
+.progress-bar-outer {
+    height: 30px;
+    background-color: #e9ecef;
+    border-radius: 8px;
+    overflow: hidden;
+    position: relative;
+}
+
+.progress-bar-inner {
+    height: 100%;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 600;
+    font-size: 0.9rem;
+    color: white;
+    transition: width 0.5s ease-in-out;
+    min-width: fit-content;
+    padding: 0 10px;
+}
+
+.progress-bar-inner.on-track {
+    background-color: #28a745;
+}
+
+.progress-bar-inner.near-limit {
+    background-color: #ffc107;
+    color: #212529;
+}
+
+.progress-bar-inner.over-budget {
+    background-color: #dc3545;
+}
+
+.form-control.w-auto {
+    width: 150px !important;
+}
+
+.toast-container {
+    z-index: 9999;
+}
+
+/* Priority badges */
+.badge.bg-info {
+    font-size: 0.7rem;
+}
+.badge.bg-primary {
+    font-size: 0.7rem;
+}
+.badge.bg-secondary {
+    font-size: 0.7rem;
+}
+</style>
+{% endblock %}
