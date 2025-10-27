@@ -20,11 +20,11 @@ app.config['WTF_CSRF_ENABLED'] = True
 db = SQLAlchemy(app)
 migrate = Migrate(app, db)
 
-CATEGORIES = ['Food', 'Transport', 'Entertainment', 'Groceries', 'Bills', 'Shopping', 'Restaurants', 'Gas & Fuel', 'Other']
+CATEGORIES = ['Food', 'Transport', 'Entertainment', 'Groceries', 'Utilities', 'Shopping', 'Restaurants', 'Gas & Fuel', 'Other']
 
 # Update CATEGORY_PRIORITIES
 CATEGORY_PRIORITIES = {
-    'Bills': 1,      # Highest priority - essential
+    'Utilities': 1,      # Highest priority - essential
     'Groceries': 2,  # Essential living expenses
     'Transport': 3,  # Essential for work/life
     'Gas & Fuel': 3, # Same priority as transport
@@ -68,8 +68,8 @@ def categorize_expense_rule_based(description):
         'Food': ['coffee', 'food', 'restaurant', 'dinner', 'lunch', 'cafe'],
         'Transport': ['taxi', 'bus', 'fuel', 'train', 'flight', 'uber'],
         'Entertainment': ['movie', 'concert', 'game', 'ticket', 'netflix'],
-        'Groceries': ['groceries', 'supermarket', 'milk', 'bread'],
-        'Bills': ['electricity', 'water', 'internet', 'phone', 'bill'],
+        'Groceries': ['supermarket', 'milk', 'bread'],
+        'Utilities': ['electricity', 'water', 'internet', 'phone', 'bill'],
         'Shopping': ['clothing', 'electronics', 'store', 'mall', 'shop']
     }
     for category, keywords in rules.items():
