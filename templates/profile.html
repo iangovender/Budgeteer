@@ -13,8 +13,8 @@
                 <div class="row mb-4">
                     <div class="col-md-6">
                         <h6>Account Information</h6>
-                        <p><strong>Username:</strong> {{ user.username }}</p>
-                        <p><strong>Email:</strong> {{ user.email }}</p>
+                        <p><strong>Username:</strong> <span id="currentUsername">{{ user.username }}</span></p>
+                        <p><strong>Email:</strong> <span id="currentEmail">{{ user.email }}</span></p>
                         <p><strong>Member since:</strong> {{ user.created_at.strftime('%B %d, %Y') }}</p>
                     </div>
                     <div class="col-md-6">
@@ -29,6 +29,81 @@
 
                 <hr>
 
+                <!-- Account Information Update Form -->
+                <h5 class="mb-3">Update Account Information</h5>
+                <form method="POST" action="{{ url_for('profile') }}" id="accountForm">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="username" class="form-label">Username</label>
+                                <input type="text" class="form-control" id="username" name="username" 
+                                    value="{{ user.username }}" placeholder="Enter new username">
+                                <div class="form-text">Your display name for the application.</div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="email" class="form-label">Email</label>
+                                <input type="email" class="form-control" id="email" name="email" 
+                                    value="{{ user.email }}" placeholder="Enter new email">
+                                <div class="form-text">We'll never share your email with anyone else.</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="current_password" class="form-label">Current Password</label>
+                        <div class="password-group position-relative">
+                            <input type="password" class="form-control" id="current_password" name="current_password" 
+                                placeholder="Enter current password to confirm changes">
+                            <button type="button" class="btn btn-outline-secondary position-absolute top-50 end-0 translate-middle-y me-2" 
+                                    onclick="togglePassword('current_password')" style="border: none; background: transparent;">
+                                <i class="fa fa-eye"></i>
+                            </button>
+                        </div>
+                        <div class="form-text">Required to update your account information.</div>
+                    </div>
+
+                    <hr class="my-4">
+
+                    <!-- Password Change Section -->
+                    <h6 class="mb-3">Change Password</h6>
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="new_password" class="form-label">New Password</label>
+                                <div class="password-group position-relative">
+                                    <input type="password" class="form-control" id="new_password" name="new_password" 
+                                        placeholder="Enter new password">
+                                    <button type="button" class="btn btn-outline-secondary position-absolute top-50 end-0 translate-middle-y me-2" 
+                                            onclick="togglePassword('new_password')" style="border: none; background: transparent;">
+                                        <i class="fa fa-eye"></i>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="confirm_new_password" class="form-label">Confirm New Password</label>
+                                <div class="password-group position-relative">
+                                    <input type="password" class="form-control" id="confirm_new_password" name="confirm_new_password" 
+                                        placeholder="Confirm new password">
+                                    <button type="button" class="btn btn-outline-secondary position-absolute top-50 end-0 translate-middle-y me-2" 
+                                            onclick="togglePassword('confirm_new_password')" style="border: none; background: transparent;">
+                                        <i class="fa fa-eye"></i>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <button type="submit" class="btn btn-primary" name="account_update">
+                        <i class="fas fa-save me-2"></i>Update Account Information
+                    </button>
+                </form>
+
+                <hr>
+
                 <h5 class="mb-3">Monthly Income Setup</h5>
                 {% if not user.monthly_income or user.monthly_income == 0 %}
                     <div class="alert alert-warning">
@@ -36,24 +111,18 @@
                         Please set up your monthly income to enable budget tracking features.
                     </div>
                 {% endif %}
-                
-                <form method="POST" action="{{ url_for('profile') }}">
+
+                <form method="POST" action="{{ url_for('profile') }}" id="incomeForm">
                     {{ form.hidden_tag() }}
                     <div class="mb-3">
                         <label for="monthly_income" class="form-label">Monthly Income (R)</label>
-                        {{ form.monthly_income(class="form-control", value=user.monthly_income if user.monthly_income else '') }}
-                        {% if form.monthly_income.errors %}
-                            <div class="text-danger">
-                                {% for error in form.monthly_income.errors %}
-                                    <small>{{ error }}</small>
-                                {% endfor %}
-                            </div>
-                        {% endif %}
+                        <input type="number" step="0.01" class="form-control" id="monthly_income" name="monthly_income" 
+                            value="{{ user.monthly_income if user.monthly_income else '' }}" placeholder="Enter monthly income">
                         <div class="form-text">
                             This helps calculate your remaining budget and track spending against your income.
                         </div>
                     </div>
-                    <button type="submit" class="btn btn-primary">
+                    <button type="submit" class="btn btn-primary" name="income_update">
                         <i class="fas fa-save me-2"></i>Update Income
                     </button>
                 </form>
@@ -86,10 +155,6 @@
 
                 <div class="mt-4">
                     <h5 class="mb-3">Account Management</h5>
-                    <div class="alert alert-info">
-                        <i class="fa fa-info-circle me-2"></i>
-                        To update your username, email, or password, please contact support or create a new account.
-                    </div>
                     
                     <div class="d-grid gap-2">
                         <a href="{{ url_for('budget_settings') }}" class="btn btn-outline-primary">
@@ -104,4 +169,135 @@
         </div>
     </div>
 </div>
+
+<style>
+.password-group {
+    position: relative;
+}
+
+.password-group .btn {
+    z-index: 3;
+    border: none;
+    background: transparent;
+}
+
+.password-group .btn:hover {
+    background: transparent;
+    color: #6c757d;
+}
+
+.password-group .form-control {
+    padding-right: 50px;
+}
+</style>
+
+<script>
+function togglePassword(fieldId) {
+    const passwordField = document.getElementById(fieldId);
+    const toggleIcon = passwordField.parentElement.querySelector('button i');
+    
+    if (passwordField.type === 'password') {
+        passwordField.type = 'text';
+        toggleIcon.className = 'fa fa-eye-slash';
+    } else {
+        passwordField.type = 'password';
+        toggleIcon.className = 'fa fa-eye';
+    }
+}
+
+// Client-side validation for password change
+document.getElementById('accountForm').addEventListener('submit', function(e) {
+    const newPassword = document.getElementById('new_password').value;
+    const confirmPassword = document.getElementById('confirm_new_password').value;
+    const currentPassword = document.getElementById('current_password').value;
+    
+    // Check if password fields are filled but don't match
+    if (newPassword && newPassword !== confirmPassword) {
+        e.preventDefault();
+        if (window.BudgeteerNotifications) {
+            window.BudgeteerNotifications.showDanger('New passwords do not match. Please try again.');
+        } else {
+            alert('New passwords do not match. Please try again.');
+        }
+        document.getElementById('new_password').focus();
+        return;
+    }
+    
+    // Check if current password is provided when making changes
+    const username = document.getElementById('username').value;
+    const email = document.getElementById('email').value;
+    const currentUsername = "{{ user.username }}";
+    const currentEmail = "{{ user.email }}";
+    
+    // If user is changing account info, require current password
+    if ((username !== currentUsername || email !== currentEmail || newPassword) && !currentPassword) {
+        e.preventDefault();
+        if (window.BudgeteerNotifications) {
+            window.BudgeteerNotifications.showWarning('Please enter your current password to confirm changes.');
+        } else {
+            alert('Please enter your current password to confirm changes.');
+        }
+        document.getElementById('current_password').focus();
+        return;
+    }
+    
+    // Show loading state
+    const submitBtn = this.querySelector('button[type="submit"]');
+    const originalText = submitBtn.innerHTML;
+    submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Updating...';
+    submitBtn.disabled = true;
+    
+    // Re-enable button after 3 seconds in case of error
+    setTimeout(() => {
+        submitBtn.innerHTML = originalText;
+        submitBtn.disabled = false;
+    }, 3000);
+});
+
+// Separate form submission for income updates
+document.getElementById('incomeForm').addEventListener('submit', function(e) {
+    // Show loading state for income form
+    const submitBtn = this.querySelector('button[type="submit"]');
+    const originalText = submitBtn.innerHTML;
+    submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Updating...';
+    submitBtn.disabled = true;
+    
+    // Re-enable button after 3 seconds in case of error
+    setTimeout(() => {
+        submitBtn.innerHTML = originalText;
+        submitBtn.disabled = false;
+    }, 3000);
+    
+    return true;
+});
+
+// Enhanced password strength check (optional)
+document.getElementById('new_password').addEventListener('input', function() {
+    const password = this.value;
+    const strengthIndicator = document.getElementById('password-strength');
+    
+    if (!strengthIndicator) {
+        // Create strength indicator if it doesn't exist
+        const indicator = document.createElement('div');
+        indicator.id = 'password-strength';
+        indicator.className = 'form-text';
+        this.parentNode.appendChild(indicator);
+    }
+    
+    let strength = 'Weak';
+    let strengthClass = 'text-danger';
+    
+    if (password.length >= 8) {
+        strength = 'Medium';
+        strengthClass = 'text-warning';
+    }
+    
+    if (password.length >= 12 && /[A-Z]/.test(password) && /[0-9]/.test(password) && /[^A-Za-z0-9]/.test(password)) {
+        strength = 'Strong';
+        strengthClass = 'text-success';
+    }
+    
+    strengthIndicator.innerHTML = `Password strength: <span class="${strengthClass}">${strength}</span>`;
+});
+</script>
 {% endblock %}

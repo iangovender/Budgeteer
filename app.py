@@ -560,18 +560,67 @@ def profile():
     current_month = today.strftime('%B %Y')
     
     form = IncomeForm()
+    
+    # Handle account information update (from the new form fields)
+    if request.method == 'POST':
+        # Check if this is an account update (not income form)
+        if 'username' in request.form or 'email' in request.form or 'new_password' in request.form:
+            current_password = request.form.get('current_password', '')
+            new_username = request.form.get('username', '').strip()
+            new_email = request.form.get('email', '').strip()
+            new_password = request.form.get('new_password', '').strip()
+            confirm_password = request.form.get('confirm_new_password', '').strip()
+            
+            # Verify current password
+            if not check_password_hash(user.password_hash, current_password):
+                flash('Current password is incorrect. Please try again.', 'danger')
+                return redirect(url_for('profile'))
+            
+            changes_made = False
+            
+            # Update username if changed
+            if new_username and new_username != user.username:
+                # Check if username is already taken
+                existing_user = User.query.filter(User.username == new_username, User.id != user_id).first()
+                if existing_user:
+                    flash('Username already taken. Please choose a different one.', 'danger')
+                else:
+                    user.username = new_username
+                    session['username'] = new_username
+                    changes_made = True
+            
+            # Update email if changed
+            if new_email and new_email != user.email:
+                # Check if email is already registered
+                existing_user = User.query.filter(User.email == new_email, User.id != user_id).first()
+                if existing_user:
+                    flash('Email already registered. Please use a different email.', 'danger')
+                else:
+                    user.email = new_email
+                    changes_made = True
+            
+            # Update password if provided
+            if new_password:
+                if new_password != confirm_password:
+                    flash('New passwords do not match. Please try again.', 'danger')
+                elif len(new_password) < 6:
+                    flash('Password must be at least 6 characters long.', 'danger')
+                else:
+                    user.password_hash = generate_password_hash(new_password)
+                    changes_made = True
+            
+            # Commit changes if any were made
+            if changes_made:
+                db.session.commit()
+                flash('Account information updated successfully!', 'success')
+            
+            return redirect(url_for('profile'))
+    
+    # Handle income form submission
     if form.validate_on_submit():
         user.monthly_income = form.monthly_income.data
-        recommendations = generate_smart_budget_recommendations(user_id, user.monthly_income)
-        
-        for category, limit in recommendations.items():
-            budget = Budget.query.filter_by(user_id=user_id, category=category).first()
-            if not budget:
-                budget = Budget(user_id=user_id, category=category, monthly_limit=limit)
-                db.session.add(budget)
-        
         db.session.commit()
-        flash('Monthly income updated! Smart budgets suggested!', 'success')
+        flash('Monthly income updated successfully!', 'success')
         return redirect(url_for('profile'))
     
     return render_template('profile.html', user=user, form=form, current_month=current_month)

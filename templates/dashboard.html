@@ -4,6 +4,12 @@
 
 {% block extra_css %}
 <style>
+    /* Fix for dashboard appearing below viewport */
+    body {
+        overflow-x: hidden;
+        padding-top: 60px; /* Account for fixed navbar */
+    }
+    
     .border-positive { border-left-color: #22c55e !important; }
     .border-negative { border-left-color: #ef4444 !important; }
     .text-positive { color: #22c55e !important; }
@@ -83,15 +89,28 @@
         overflow-x: auto;
     }
     
-    /* Right column cards full height */
+    /* Right column cards - remove fixed height and use natural flow */
     .right-column-cards .card {
-        height: 100%;
-        display: flex;
-        flex-direction: column;
+        display: block; /* Remove flex from individual cards */
+        height: auto; /* Let cards size naturally */
+        margin-bottom: 1rem;
     }
     
     .right-column-cards .card-body {
-        flex: 1;
+        flex: none; /* Remove flex grow */
+    }
+    
+    /* Ensure proper spacing in right column */
+    .right-column-cards {
+        display: flex;
+        flex-direction: column;
+        gap: 1rem; /* Consistent spacing between cards */
+    }
+    
+    /* Fix for main content area */
+    .main-content {
+        padding-top: 20px; /* Reduced since body already has padding */
+        min-height: calc(100vh - 120px); /* Account for navbar and footer */
     }
 </style>
 {% endblock %}
@@ -170,9 +189,13 @@
     </div>
 </div>
 
+<!-- THIS ROW CONTROLS THE MAIN LAYOUT WIDTH -->
+<!-- Change col-lg-8 to col-lg-9 to make left side wider (75% width) -->
+<!-- Change col-lg-4 to col-lg-3 to make right side narrower (25% width) -->
 <div class="row">
     <!-- Left Column - Chart and Recent Expenses + Category Budgets -->
-    <div class="col-lg-8 mb-4">
+    <!-- CHANGED FROM col-lg-8 TO col-lg-9 FOR WIDER LEFT COLUMN -->
+    <div class="col-lg-9 mb-4">
         <!-- Chart Section -->
         <div class="card mb-4">
             <div class="card-body">
@@ -191,10 +214,11 @@
             </div>
         </div>
 
-        <!-- Recent Expenses and Category Budgets - Side by Side with Equal Height -->
+        <!-- Recent Expenses and udgets - Side by Side with Equal Height -->
         <div class="row row-equal-height">
             <!-- Recent Expenses -->
-            <div class="col-lg-6 mb-4">
+            <!-- CHANGED FROM col-lg-6 TO col-lg-7 FOR WIDER RECENT EXPENSES CARD -->
+            <div class="col-lg-7 mb-4">
                 <div class="card">
                     <div class="card-body">
                         <div class="d-flex justify-content-between align-items-center mb-3">
@@ -238,8 +262,9 @@
             </div>
 
             <!-- Category Budgets -->
+            <!-- CHANGED FROM col-lg-6 TO col-lg-5 FOR NARROWER CATEGORY BUDGETS CARD -->
             {% if category_budgets %}
-            <div class="col-lg-6 mb-4">
+            <div class="col-lg-5 mb-4">
                 <div class="card">
                     <div class="card-body">
                         <h5 class="card-title mb-3">Category Budgets</h5>
@@ -272,9 +297,10 @@
     </div>
 
     <!-- Right Column - Quick Actions, Monthly Management, Insights, Budget Health -->
-    <div class="col-lg-4 mb-4 right-column-cards">
+    <!-- CHANGED FROM col-lg-4 TO col-lg-3 FOR NARROWER RIGHT COLUMN -->
+    <div class="col-lg-3 mb-4 right-column-cards">
         <!-- Quick Actions -->
-        <div class="card mb-3">
+        <div class="card">
             <div class="card-body">
                 <h5 class="card-title mb-3">Quick Actions</h5>
                 <div class="d-grid gap-2">
@@ -295,7 +321,7 @@
         </div>
 
         <!-- Monthly Management -->
-        <div class="card mb-3">
+        <div class="card">
             <div class="card-body">
                 <h5 class="card-title mb-3">Monthly Management</h5>
                 <div class="d-grid gap-2">
@@ -318,7 +344,7 @@
 
         <!-- AI Insights -->
         {% if insights %}
-        <div class="card mb-3">
+        <div class="card">
             <div class="card-body">
                 <div class="d-flex justify-content-between align-items-center mb-2">
                     <h5 class="card-title mb-0">AI Insights <i class="fas fa-robot text-primary"></i></h5>
@@ -342,7 +368,7 @@
         {% endif %}
 
         <!-- Budget Health -->
-        <div class="card mb-3">
+        <div class="card">
             <div class="card-body">
                 <h5 class="card-title mb-3">Budget Health</h5>
                 {% if monthly_income and monthly_income > 0 %}
