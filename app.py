@@ -22,19 +22,6 @@ migrate = Migrate(app, db)
 
 CATEGORIES = ['Food', 'Transport', 'Entertainment', 'Groceries', 'Utilities', 'Shopping', 'Restaurants', 'Gas & Fuel', 'Other']
 
-# Update CATEGORY_PRIORITIES
-CATEGORY_PRIORITIES = {
-    'Utilities': 1,      # Highest priority - essential
-    'Groceries': 2,  # Essential living expenses
-    'Transport': 3,  # Essential for work/life
-    'Gas & Fuel': 3, # Same priority as transport
-    'Food': 4,       # Eating out - moderate priority
-    'Restaurants': 4, # Same priority as food
-    'Shopping': 5,   # Discretionary spending
-    'Entertainment': 6,  # Leisure - lower priority
-    'Other': 7       # Miscellaneous - lowest priority
-}
-
 class User(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     username = db.Column(db.String(50), unique=True, nullable=False)
@@ -100,151 +87,283 @@ def check_budget_alert(user_id, category, amount):
     return None
 
 def generate_smart_budget_recommendations(user_id, monthly_income):
-    expenses = Expense.query.filter_by(user_id=user_id).all()
-    historical = {}
-    for e in expenses:
-        historical[e.category] = historical.get(e.category, 0) + e.amount
-    recommendations = {}
-    for category in CATEGORIES:
-        hist = historical.get(category, 0)
-        if category in ['Food', 'Groceries', 'Bills', 'Transport']:
-            base = monthly_income * 0.5 / 4
-        elif category in ['Entertainment', 'Shopping']:
-            base = monthly_income * 0.3 / 2
-        else:
-            base = monthly_income * 0.2 / 1
-        recommended = max(base, hist * 1.1)  # 10% buffer
-        recommendations[category] = round(recommended, 2)
-    return recommendations
 
-def redistribute_excess_budgets(user_id, monthly_income, current_budgets, current_spending):
-    """
-    Smart budget redistribution based on spending patterns and remaining salary
-    """
-    if monthly_income <= 0:
-        return current_budgets
+    if not monthly_income or monthly_income <= 0:
+        return {}
     
-    # Calculate total spending and remaining budget
-    total_spending = sum(current_spending.values())
-    total_allocated = sum(current_budgets.get(cat, 0) for cat in CATEGORIES)
-    remaining_budget = monthly_income - total_spending
+    # Calculate current month spending ONLY
+    today = date.today()
+    first_day_current = today.replace(day=1)
     
-    # If no remaining budget or negative, return current budgets
-    if remaining_budget <= 0:
-        return current_budgets
+    current_month_expenses = Expense.query.filter(
+        Expense.user_id == user_id,
+        Expense.date >= first_day_current
+    ).all()
     
-    # Create new budgets starting with current spending as baseline
-    new_budgets = {}
+    # Get current budgets
+    budgets = Budget.query.filter_by(user_id=user_id).all()
+    current_budgets = {b.category: b.monthly_limit for b in budgets}
     
-    # First pass: Set minimum budgets based on actual spending with buffer
+    # Current month spending by category
+    current_spending = {}
+    for e in current_month_expenses:
+        current_spending[e.category] = current_spending.get(e.category, 0) + e.amount
+    
+    # Total current month spending and remaining income
+    total_current_spending = sum(current_spending.values())
+    remaining_income = monthly_income - total_current_spending
+    
+    # If remaining income is negative, MUST work within what's available
+    available_for_budgets = max(remaining_income, monthly_income * 0.10)  # At least 10% of income as buffer
+    
+    # rule-based category system with priorities 
+    category_rules = {
+    'Groceries': {
+        'priority': 1,
+        'base_percent': 0.20,
+        'min_percent': 0.18,
+        'max_percent': 0.28,
+        'essential': True,
+        'description': 'Home food supplies'
+    },
+    'Utilities': {
+        'priority': 1,
+        'base_percent': 0.15,
+        'min_percent': 0.12,
+        'max_percent': 0.20,
+        'essential': True,
+        'description': 'Electricity, water, internet, phone bills'
+    },
+    'Transport': {
+        'priority': 1,  
+        'base_percent': 0.12,
+        'min_percent': 0.08,
+        'max_percent': 0.18,
+        'essential': True,
+        'description': 'Public transport, ride-sharing'
+    },
+    'Gas & Fuel': {
+        'priority': 1,  
+        'base_percent': 0.10,
+        'min_percent': 0.05,
+        'max_percent': 0.15,
+        'essential': True,
+        'description': 'Vehicle fuel costs'
+    },
+    'Shopping': {  
+        'priority': 1,  
+        'base_percent': 0.12,  
+        'min_percent': 0.08,
+        'max_percent': 0.18,
+        'essential': True,
+        'description': 'Essential shopping, clothing, household items'
+    },
+    'Restaurants': {
+        'priority': 3,
+        'base_percent': 0.08,
+        'min_percent': 0.03,
+        'max_percent': 0.12,
+        'essential': False,
+        'description': 'Dining out, restaurants'
+    },
+    'Food': {
+        'priority': 4,
+        'base_percent': 0.07,
+        'min_percent': 0.03,
+        'max_percent': 0.12,
+        'essential': False,
+        'description': 'Dining out, takeaways, snacks'
+    },
+    'Entertainment': {
+        'priority': 4,
+        'base_percent': 0.07,
+        'min_percent': 0.03,
+        'max_percent': 0.12,
+        'essential': False,
+        'description': 'Movies, games, subscriptions'
+    },
+    'Other': {
+        'priority': 5,
+        'base_percent': 0.08,
+        'min_percent': 0.03,
+        'max_percent': 0.10,
+        'essential': False,
+        'description': 'Miscellaneous expenses'
+    }
+    }
+    
+    recommendations = {}
+    
+    # 1: Identify over-budget categories and calculate minimum requirements
+    over_budget_categories = {}
+    essential_requirements = 0
+    total_minimum_required = 0
+    
     for category in CATEGORIES:
-        spending = current_spending.get(category, 0)
-        current_budget = current_budgets.get(category, 0)
+        current_spent = current_spending.get(category, 0)
+        rules = category_rules.get(category, {
+            'priority': 5,
+            'min_percent': 0.03,
+            'essential': False
+        })
         
-        # Essential categories get at least their spending + 15% buffer
-        if CATEGORY_PRIORITIES.get(category, 7) <= 3:  # Bills, Groceries, Transport
-            new_budgets[category] = max(spending * 1.15, current_budget)
+        min_budget = monthly_income * rules['min_percent']
+        
+        # If category is already over budget, MUST accommodate at least the current spending
+        if current_spent > current_budgets.get(category, 0):
+            over_budget_categories[category] = {
+                'current_spent': current_spent,
+                'min_required': max(current_spent * 1.05, min_budget),  # At least 5% above current spending
+                'essential': rules.get('essential', False),
+                'priority': rules.get('priority', 5)
+            }
+        
+        # Calculate total minimum requirements
+        if rules.get('essential', False):
+            essential_requirements += max(current_spent, min_budget)
+        total_minimum_required += max(current_spent, min_budget)
+    
+    # 2: Calculate base recommendations
+    for category in CATEGORIES:
+        current_spent = current_spending.get(category, 0)
+        rules = category_rules.get(category, {
+            'priority': 5,
+            'base_percent': 0.05,
+            'min_percent': 0.03,
+            'max_percent': 0.10,
+            'essential': False
+        })
+        
+        base_budget = monthly_income * rules['base_percent']
+        min_budget = monthly_income * rules['min_percent']
+        max_budget = monthly_income * rules['max_percent']
+        
+        # If category is over budget, prioritize accommodating current spending
+        if category in over_budget_categories:
+            recommendations[category] = over_budget_categories[category]['min_required']
         else:
-            # Discretionary categories get at least their spending
-            new_budgets[category] = max(spending, current_budget)
+            # Normal recommendation logic
+            if current_spent > 0:
+                # Project future spending based on current patterns
+                day_of_month = today.day
+                month_progress = day_of_month / 30
+                
+                if month_progress > 0.1:
+                    projected = current_spent / month_progress
+                else:
+                    projected = current_spent + base_budget * 0.8
+                
+                # Ensure projection is reasonable
+                if projected > max_budget:
+                    recommended = min(projected, max_budget)
+                elif projected < min_budget:
+                    recommended = max(projected, min_budget)
+                else:
+                    recommended = projected
+                
+                recommendations[category] = max(recommended, current_spent * 1.1)
+            else:
+                # No spending yet
+                if rules.get('essential', False):
+                    recommendations[category] = base_budget
+                else:
+                    recommendations[category] = min_budget
     
-    # Calculate total after minimum allocation
-    total_after_min = sum(new_budgets.values())
+    # 3: REDISTRIBUTION LOGIC - Handle budget constraints
+    total_recommended = sum(recommendations.values())
     
-    # If we're within budget, distribute remaining funds
-    if total_after_min <= monthly_income:
-        remaining_after_min = monthly_income - total_after_min
-        if remaining_after_min > 0:
-            # Distribute remaining budget based on priority and need
-            distribution_weights = {}
-            total_weight = 0
+    if total_recommended > available_for_budgets:
+        # need to redistribute - prioritize essentials and over-budget categories
+        
+        # Sort categories by priority (essentials and over-budget first)
+        sorted_categories = sorted(CATEGORIES, key=lambda cat: (
+            -category_rules.get(cat, {}).get('priority', 5),  # Higher priority first
+            cat in over_budget_categories,  # Over-budget categories first
+            -recommendations.get(cat, 0)  # Higher amounts first
+        ))
+        
+        # First pass: Ensure minimums for essentials and over-budget categories
+        redistributed = {}
+        remaining_funds = available_for_budgets
+        
+        # Allocate to highest priority categories first
+        for category in sorted_categories:
+            current_rec = recommendations[category]
+            rules = category_rules.get(category, {})
+            min_budget = monthly_income * rules.get('min_percent', 0.03)
+            current_spent = current_spending.get(category, 0)
             
-            for category in CATEGORIES:
-                # Higher priority categories get more weight
-                priority_weight = 8 - CATEGORY_PRIORITIES.get(category, 7)  # Invert so higher priority = higher weight
-                spending_ratio = current_spending.get(category, 0) / max(total_spending, 1)
-                weight = priority_weight * (1 + spending_ratio)
-                distribution_weights[category] = weight
-                total_weight += weight
+            # Calculate minimum required for this category
+            if category in over_budget_categories:
+                min_required = over_budget_categories[category]['min_required']
+            elif rules.get('essential', False):
+                min_required = max(current_spent, min_budget)
+            else:
+                min_required = max(current_spent * 0.8, min_budget * 0.5)  # Reduced minimum for non-essentials
             
-            # Distribute remaining budget proportionally
-            for category, weight in distribution_weights.items():
-                share = (weight / total_weight) * remaining_after_min
-                new_budgets[category] += share
+            # Allocate what we can
+            if remaining_funds >= min_required:
+                allocated = min(current_rec, min_required * 1.2)  # Don't exceed 20% above minimum
+                redistributed[category] = min(allocated, remaining_funds)
+                remaining_funds -= redistributed[category]
+            else:
+                # Can't meet minimum - allocate proportionally based on priority
+                if remaining_funds > 0:
+                    priority_weight = 10 if rules.get('essential', False) else 1
+                    allocated = remaining_funds * priority_weight / 10  # Essentials get full share
+                    redistributed[category] = allocated
+                    remaining_funds -= allocated
+                else:
+                    redistributed[category] = 0
+        
+        # Second pass: Distribute any remaining funds proportionally
+        if remaining_funds > 0:
+            total_allocated = sum(redistributed.values())
+            for category in sorted_categories:
+                if category in redistributed:
+                    proportion = redistributed[category] / total_allocated if total_allocated > 0 else 1/len(redistributed)
+                    extra = remaining_funds * proportion
+                    redistributed[category] += extra
             
-            # Round to 2 decimal places
-            for category in CATEGORIES:
-                new_budgets[category] = round(new_budgets[category], 2)
-                
-        return new_budgets
+            remaining_funds = 0
+        
+        recommendations = redistributed
     
-    # If we're over budget, we need to reduce allocations
-    else:
-        overshoot = total_after_min - monthly_income
-        
-        # Reduce from discretionary categories first (lowest priority)
-        discretionary_categories = [cat for cat in CATEGORIES if CATEGORY_PRIORITIES.get(cat, 7) >= 5]
-        discretionary_categories.sort(key=lambda x: CATEGORY_PRIORITIES.get(x, 7), reverse=True)
-        
-        for category in discretionary_categories:
-            if overshoot <= 0:
-                break
-                
-            current_allocation = new_budgets[category]
-            spending = current_spending.get(category, 0)
-            
-            # Don't reduce below actual spending for discretionary categories
-            min_allocation = spending
-            
-            if current_allocation > min_allocation:
-                reducible = current_allocation - min_allocation
-                reduction = min(reducible, overshoot)
-                
-                new_budgets[category] -= reduction
-                overshoot -= reduction
-        
-        # If still over budget, reduce from moderate priority categories
-        if overshoot > 0:
-            moderate_categories = [cat for cat in CATEGORIES if CATEGORY_PRIORITIES.get(cat, 7) == 4]  # Food
-            for category in moderate_categories:
-                if overshoot <= 0:
-                    break
-                    
-                current_allocation = new_budgets[category]
-                spending = current_spending.get(category, 0)
-                
-                # Allow some reduction below spending for moderate categories
-                min_allocation = spending * 0.9  # Can go 10% below spending
-                
-                if current_allocation > min_allocation:
-                    reducible = current_allocation - min_allocation
-                    reduction = min(reducible, overshoot)
-                    
-                    new_budgets[category] -= reduction
-                    overshoot -= reduction
-        
-        # Final check - if still over budget, apply proportional reduction to all non-essential
-        if overshoot > 0:
-            non_essential_categories = [cat for cat in CATEGORIES if CATEGORY_PRIORITIES.get(cat, 7) >= 4]
-            total_non_essential = sum(new_budgets[cat] for cat in non_essential_categories)
-            
-            if total_non_essential > 0:
-                for category in non_essential_categories:
-                    proportion = new_budgets[category] / total_non_essential
-                    reduction = overshoot * proportion
-                    new_budgets[category] = max(new_budgets[category] - reduction, current_spending.get(category, 0) * 0.8)
+    # 4: Final validation and rounding
+    total_recommended = sum(recommendations.values())
     
-    # Ensure final total doesn't exceed monthly income and round values
-    final_total = sum(new_budgets.values())
-    if final_total > monthly_income:
-        adjustment_factor = monthly_income / final_total
+    # Final hard cap if needed 
+    if total_recommended > available_for_budgets:
+        final_scale = available_for_budgets / total_recommended
         for category in CATEGORIES:
-            new_budgets[category] = round(new_budgets[category] * adjustment_factor, 2)
-    else:
-        for category in CATEGORIES:
-            new_budgets[category] = round(new_budgets[category], 2)
+            recommendations[category] = recommendations.get(category, 0) * final_scale
     
-    return new_budgets
+    # Ensure all categories have reasonable values and round
+    for category in CATEGORIES:
+        current_spent = current_spending.get(category, 0)
+        final_value = recommendations.get(category, 0)
+        
+        # Never recommend less than current spending for over-budget categories
+        if category in over_budget_categories and final_value < current_spent:
+            final_value = current_spent * 1.05
+        
+        # Apply reasonable bounds
+        rules = category_rules.get(category, {})
+        max_budget = monthly_income * rules.get('max_percent', 0.10)
+        final_value = min(final_value, max_budget)
+        
+        recommendations[category] = round(max(final_value, 0), 2)
+    
+    # Final check
+    final_total = sum(recommendations.values())
+    if final_total > available_for_budgets * 1.05:  # Allow 5% tolerance
+        print(f"WARNING: Final recommendations ({final_total}) exceed available ({available_for_budgets})")
+        # Emergency scaling
+        emergency_scale = available_for_budgets / final_total
+        for category in CATEGORIES:
+            recommendations[category] = round(recommendations[category] * emergency_scale, 2)
+    
+    return recommendations
 
 def generate_chartjs_data(category_totals):
     if not category_totals:
@@ -286,50 +405,6 @@ def generate_insights(user_id):
     
     return {'top_categories': top_categories_dict, 'trends': trends, 'tips': tips}
 
-def reset_monthly_budgets(user_id):
-    """
-    Reset monthly spending by creating a psychological fresh start
-    """
-    try:
-        today = date.today()
-        current_month = today.strftime('%B %Y')
-        
-        # Get current month expenses count for reporting
-        first_day_current = today.replace(day=1)
-        current_month_expenses = Expense.query.filter(
-            Expense.user_id == user_id,
-            Expense.date >= first_day_current
-        ).count()
-        
-        # The reset is mainly psychological - we don't delete data
-        # but we inform the user they're starting fresh
-        if current_month_expenses > 0:
-            return True, f"Budget reset! {current_month_expenses} expenses archived. Ready for {current_month}!"
-        else:
-            return True, f"Fresh start! Ready for {current_month}!"
-            
-    except Exception as e:
-        return False, f"Error resetting budgets: {str(e)}"
-
-def get_monthly_reset_status(user_id):
-    """
-    Check if budgets have been reset for current month
-    """
-    today = date.today()
-    first_day_current = today.replace(day=1)
-    
-    # Check if there are any expenses for current month
-    current_month_expenses = Expense.query.filter(
-        Expense.user_id == user_id,
-        Expense.date >= first_day_current
-    ).count()
-    
-    return {
-        'current_month': today.strftime('%B %Y'),
-        'has_current_month_expenses': current_month_expenses > 0,
-        'expense_count': current_month_expenses,
-        'needs_reset': current_month_expenses == 0  # Simplified logic
-    }
 
 def login_required(f):
     @wraps(f)
@@ -485,9 +560,18 @@ def budget_settings():
     user_id = session['user_id']
     user = db.session.get(User, user_id)
     
-    expenses = Expense.query.filter_by(user_id=user_id).all()
+    # Get CURRENT MONTH expenses only (not all-time)
+    today = date.today()
+    first_day_current = today.replace(day=1)
+    
+    current_month_expenses = Expense.query.filter(
+        Expense.user_id == user_id,
+        Expense.date >= first_day_current
+    ).all()
+    
+    # Calculate current month spending by category
     current_spending = {}
-    for expense in expenses:
+    for expense in current_month_expenses:
         current_spending[expense.category] = current_spending.get(expense.category, 0) + expense.amount
     
     budgets = Budget.query.filter_by(user_id=user_id).all()
@@ -495,27 +579,7 @@ def budget_settings():
     
     recommendations = generate_smart_budget_recommendations(user_id, user.monthly_income)
     
-    # Check for smart redistribution
     if request.method == 'POST':
-        # Check if user wants smart redistribution
-        if 'smart_redistribute' in request.form and user.monthly_income > 0:
-            # Apply smart redistribution
-            new_budgets = redistribute_excess_budgets(user_id, user.monthly_income, budget_dict, current_spending)
-            
-            # Update budgets with redistributed amounts
-            for category in CATEGORIES:
-                new_limit = new_budgets.get(category, 0)
-                budget = Budget.query.filter_by(user_id=user_id, category=category).first()
-                if budget:
-                    budget.monthly_limit = new_limit
-                else:
-                    budget = Budget(user_id=user_id, category=category, monthly_limit=new_limit)
-                    db.session.add(budget)
-            
-            db.session.commit()
-            flash('Budgets smartly redistributed based on your spending patterns!', 'success')
-            return redirect(url_for('budget_settings'))
-        
         # Normal budget update
         for category in CATEGORIES:
             limit_key = f'limit_{category}'
@@ -533,12 +597,7 @@ def budget_settings():
         flash('Budgets updated successfully!', 'success')
         return redirect(url_for('budget_settings'))
     
-    over_budget = any(current_spending.get(cat, 0) > budget_dict.get(cat, 0) for cat in CATEGORIES if cat in budget_dict)
-    
-    # Calculate redistribution suggestions
-    redistribution_suggestions = None
-    if user.monthly_income > 0 and over_budget:
-        redistribution_suggestions = redistribute_excess_budgets(user_id, user.monthly_income, budget_dict, current_spending)
+    over_budget = any(current_spending.get(cat, 0) > budget_dict.get(cat, 0) for cat in CATEGORIES if cat in budget_dict and budget_dict[cat] > 0)
     
     return render_template('budget_settings.html', 
                          categories=CATEGORIES,
@@ -546,7 +605,6 @@ def budget_settings():
                          current_spending=current_spending,
                          over_budget=over_budget,
                          recommendations=recommendations,
-                         redistribution_suggestions=redistribution_suggestions,
                          monthly_income=user.monthly_income)
 
 @app.route('/profile', methods=['GET', 'POST'])
@@ -561,7 +619,7 @@ def profile():
     
     form = IncomeForm()
     
-    # Handle account information update (from the new form fields)
+    # Handle account information update
     if request.method == 'POST':
         # Check if this is an account update (not income form)
         if 'username' in request.form or 'email' in request.form or 'new_password' in request.form:
@@ -795,29 +853,6 @@ def budget_forecast():
                          budgets=budget_dict,
                          categories=CATEGORIES,
                          monthly_income=user.monthly_income)
-
-@app.route('/reset_budgets', methods=['POST'])
-@login_required
-def reset_budgets():
-    """Reset budgets for new month"""
-    user_id = session['user_id']
-    
-    success, message = reset_monthly_budgets(user_id)
-    
-    if success:
-        flash(message, 'success')
-    else:
-        flash(message, 'danger')
-    
-    return redirect(url_for('dashboard'))
-
-@app.route('/get_reset_status')
-@login_required
-def get_reset_status():
-    """Get monthly reset status for AJAX calls"""
-    user_id = session['user_id']
-    status = get_monthly_reset_status(user_id)
-    return jsonify(status)
 
 if __name__ == '__main__':
     with app.app_context():
